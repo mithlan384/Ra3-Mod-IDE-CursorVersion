@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>知识库管理</title>
+  <link rel="stylesheet" href="styles/app-theme.css">
+  <link rel="stylesheet" href="styles/faction-theme.css">
+  <link rel="stylesheet" href="styles/standalone-window.css">
+</head>
+<body class="standalone-window knowledge-layout">
+  <div class="kb-header">
+    <h2>📚 知识库管理</h2>
+    <div class="kb-header-actions">
+      <button type="button" id="import-btn" class="app-btn app-btn--secondary">📥 导入</button>
+      <button type="button" id="export-btn" class="app-btn app-btn--secondary">📤 导出</button>
+      <button type="button" id="rebuild-btn" class="app-btn app-btn--secondary">🔄 重建索引</button>
+      <button type="button" id="clear-btn" class="app-btn app-btn--danger">🗑 清空全部</button>
+    </div>
+  </div>
+  <div class="kb-category-bar" id="category-bar"></div>
+  <div class="kb-search-bar" id="kb-search-bar">
+    <input class="standalone-field" type="search" id="search-input" placeholder="搜索知识条目...">
+  </div>
+  <div class="kb-skill-toolbar hidden" id="skill-toolbar">
+    <button type="button" id="skill-install-btn" class="app-btn app-btn--primary">📦 安装 Skill（zip 或文件夹）</button>
+    <p class="kb-skill-hint">也可在 AI 对话中说：帮我安装 Skill https://skillhub.cn/skills/…</p>
+  </div>
+  <div class="kb-stats" id="stats">加载中...</div>
+  <div class="kb-list" id="knowledge-list"></div>
+  <script src="scripts/app-theme.js"></script>
+  <script src="scripts/faction-theme.js"></script>
+  <script src="scripts/knowledge-panel.js"></script>
+</body>
+</html>

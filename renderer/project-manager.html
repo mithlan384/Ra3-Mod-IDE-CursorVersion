@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RA3 MOD 项目管理器</title>
+  <link rel="stylesheet" href="styles/app-theme.css">
+  <link rel="stylesheet" href="styles/faction-theme.css">
+  <link rel="stylesheet" href="styles/standalone-window.css">
+  <link rel="stylesheet" href="styles/boot-splash.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    html[data-pm-page] body.pm-page {
+      color: var(--app-text);
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: transparent !important;
+      overflow: hidden;
+    }
+    html[data-pm-page]:root[data-faction-theme] body.pm-page {
+      background: transparent !important;
+    }
+    .pm-wallpaper {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-color: #0a0e14;
+      background-position: center center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity 0.85s ease;
+      will-change: opacity;
+    }
+    .pm-wallpaper.is-loaded {
+      opacity: 1;
+    }
+    .pm-shell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      height: 100vh;
+      min-height: 600px;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .pm-shell > .pm-sidebar,
+    .pm-shell > .pm-main {
+      min-height: 0;
+    }
+    .pm-shell.is-revealed {
+      pointer-events: auto;
+    }
+    .pm-sidebar,
+    .pm-main {
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .pm-shell.is-revealed .pm-sidebar {
+      opacity: 1;
+      transform: none;
+      transition-delay: 0.28s;
+    }
+    .pm-shell.is-revealed .pm-main {
+      opacity: 1;
+      transform: none;
+      transition-delay: 0.42s;
+    }
+    .pm-sidebar {
+      background: linear-gradient(180deg, rgba(6, 10, 18, 0.72) 0%, rgba(12, 18, 28, 0.65) 100%);
+      backdrop-filter: blur(8px);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 28px 22px 22px;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: 16px;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .pm-sidebar-head {
+      flex-shrink: 0;
+    }
+    .pm-logo-wrap {
+      text-align: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .pm-logo-ring {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid rgba(220, 180, 80, 0.55);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+      background: rgba(6, 10, 18, 0.95);
+    }
+    .pm-logo-crop {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pm-logo-crop img {
+      width: 200%;
+      height: 200%;
+      max-width: none;
+      object-fit: cover;
+      object-position: center center;
+      pointer-events: none;
+      user-select: none;
+    }
+    .pm-brand {
+      margin-top: 12px;
+      font-size: 20px;
+      font-weight: 700;
+      color: #f0d878;
+      letter-spacing: 0.04em;
+    }
+    .pm-tagline {
+      font-size: 12px;
+      color: var(--app-text-dim);
+      margin-top: 4px;
+    }
+    .pm-intro {
+      font-size: 13px;
+      line-height: 1.65;
+      color: rgba(220, 228, 240, 0.88);
+    }
+    .pm-intro strong { color: #f0d878; font-weight: 600; }
+    .pm-highlights {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 4px;
+      margin-right: -4px;
+    }
+    .pm-highlights::-webkit-scrollbar { width: 6px; }
+    .pm-highlights::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+    }
+    .pm-highlights-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(240, 216, 120, 0.75);
+    }
+    .pm-highlight-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .pm-highlight-list li {
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(210, 218, 230, 0.9);
+      padding: 8px 10px 8px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-left-width: 3px;
+    }
+    .pm-highlight-list li strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--app-text-strong);
+      margin-bottom: 2px;
+    }
+    .pm-highlight-list li.accent-allied { border-left-color: rgba(70, 140, 220, 0.85); }
+    .pm-highlight-list li.accent-soviet { border-left-color: rgba(200, 55, 55, 0.9); }
+    .pm-highlight-list li.accent-empire { border-left-color: rgba(220, 160, 50, 0.9); }
+    .pm-highlight-list li.accent-neutral { border-left-color: rgba(160, 170, 190, 0.5); }
+    .pm-quote-foot {
+      flex-shrink: 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 12px;
+      background: linear-gradient(180deg, rgba(6, 10, 18, 0.72) 0%, rgba(12, 18, 28, 0.65) 100%);
+    }
+    .pm-quote {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.55;
+      font-style: italic;
+      color: rgba(180, 190, 210, 0.72);
+      max-height: 4.65em;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      word-break: break-word;
+    }
+    .pm-main {
+      display: flex;
+      flex-direction: column;
+      padding: 28px 32px 32px;
+      background: linear-gradient(135deg, rgba(8, 12, 20, 0.35) 0%, rgba(8, 12, 20, 0.5) 100%);
+      backdrop-filter: blur(4px);
+      overflow-y: auto;
+    }
+    .pm-main h1 {
+      font-size: 26px;
+      color: var(--app-text-strong);
+      margin-bottom: 6px;
+    }
+    .pm-main .subtitle {
+      font-size: 13px;
+      color: var(--app-text-dim);
+      margin-bottom: 22px;
+    }
+    .pm-panel {
+      flex: 1;
+      background: rgba(22, 28, 36, 0.62);
+      border-radius: 16px;
+      padding: 24px 28px;
+      border: 1px solid var(--app-border);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+      max-width: 640px;
+    }
+    .section { margin-bottom: 18px; }
+    .section-title { font-size: 13px; color: var(--app-text-muted); margin-bottom: 8px; font-weight: 600; }
+    .project-list {
+      background: rgba(30, 36, 44, 0.55);
+      border-radius: 8px;
+      max-height: min(320px, 42vh);
+      overflow-y: auto;
+      border: 1px solid var(--app-border-solid);
+    }
+    .project-list::-webkit-scrollbar { width: 10px; }
+    .project-list::-webkit-scrollbar-thumb {
+      background: var(--app-border-subtle);
+      border-radius: 6px;
+    }
+    .project-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--app-border-solid);
+      transition: background 0.15s;
+    }
+    .project-item:last-child { border-bottom: none; }
+    .project-item:hover { background: var(--app-active); }
+    .project-name { font-size: 14px; color: var(--app-text-strong); }
+    .project-path { font-size: 11px; color: var(--app-text-dim); word-break: break-all; margin-top: 2px; }
+    .empty-text { padding: 20px; text-align: center; color: var(--app-text-dim); font-size: 13px; }
+    .actions { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+    .btn-primary { flex: 1; min-width: 140px; }
+    .btn-secondary { flex: 1; min-width: 120px; }
+    .footer {
+      margin-top: 14px;
+      font-size: 11px;
+      color: var(--app-text-dim);
+      word-break: break-all;
+    }
+    .sdk-setup { display: flex; flex-direction: column; gap: 16px; }
+    .sdk-setup input {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--app-surface-input);
+      border: 1px solid var(--app-border-solid);
+      border-radius: 6px;
+      color: var(--app-text);
+      font-size: 14px;
+    }
+    @media (max-width: 820px) {
+      .pm-shell { grid-template-columns: 1fr; }
+      .pm-sidebar { display: none; }
+    }
+  </style>
+</head>
+<body class="pm-page">
+  <div class="pm-wallpaper" id="pm-wallpaper" aria-hidden="true"></div>
+  <script>
+    (async function earlyPmWallpaper() {
+      var layer = document.getElementById('pm-wallpaper');
+      if (!layer) return;
+      var candidates = [];
+      if (window.api && window.api.getArtFileUrl) {
+        for (var ri = 0; ri < 2; ri++) {
+          var rel = ri === 0 ? 'RA3.jpg' : 'ra3.jpg';
+          try {
+            var fileUrl = await window.api.getArtFileUrl(rel);
+            if (fileUrl) candidates.push(fileUrl);
+          } catch (e) {}
+        }
+      }
+      candidates.push('ra3-art://RA3.jpg');
+      var i = 0;
+      function next() {
+        if (i >= candidates.length) return;
+        var url = candidates[i++];
+        var img = new Image();
+        img.onload = function () {
+          layer.style.backgroundImage = 'url("' + String(url).replace(/"/g, '%22') + '")';
+          layer.classList.add('is-loaded');
+        };
+        img.onerror = function () {
+          next();
+        };
+        img.src = url;
+      }
+      next();
+    })();
+  </script>
+  <div class="pm-shell" id="pm-shell">
+    <aside class="pm-sidebar">
+      <div class="pm-sidebar-head">
+        <div class="pm-logo-wrap">
+          <div class="pm-logo-ring">
+            <div class="pm-logo-crop">
+              <img id="pm-rat-logo" alt="" decoding="async" />
+            </div>
+          </div>
+          <div class="pm-brand">RA3 MOD Studio</div>
+          <div class="pm-tagline">命令与征服 · 红色警戒3</div>
+        </div>
+        <p class="pm-intro">
+          欢迎使用 <strong>RA3 MOD IDE</strong>。在此管理您的 MOD 工程：打开 SDK 中的项目、新建或导入模组，并进入可视化 XML 编辑与 AI 辅助开发流程。
+        </p>
+      </div>
+      <div class="pm-highlights">
+        <div class="pm-highlights-title">红警 3 · MOD 开发</div>
+        <ul class="pm-highlight-list">
+          <li class="accent-allied"><strong>GameObject 蓝图</strong>单位、建筑、武器与继承链 XML 编辑</li>
+          <li class="accent-soviet"><strong>Mod.xml 与遭遇战</strong>全局挂载、AI 状态与地图规则配置</li>
+          <li class="accent-empire"><strong>本地化 CSF</strong>对白与界面字符串，多语言条目管理</li>
+          <li class="accent-neutral"><strong>SDK 编译管线</strong>一键构建、日志分栏与错误定位跳转</li>
+          <li class="accent-neutral"><strong>AI 协作</strong>百科检索、单位创建与项目内智能改 MOD</li>
+        </ul>
+      </div>
+      <div class="pm-quote-foot">
+        <p class="pm-quote" id="pm-quote"></p>
+      </div>
+    </aside>
+    <main class="pm-main">
+      <h1>项目管理器</h1>
+      <p class="subtitle">选择 MOD 工程以开始编辑，或配置 RA3 MOD SDK 路径</p>
+      <div class="pm-panel" id="main-container"></div>
+    </main>
+  </div>
+  <script src="scripts/boot-splash.js"></script>
+  <script src="scripts/app-theme.js"></script>
+  <script src="scripts/faction-theme.js"></script>
+  <script src="scripts/pm-military-quotes.js"></script>
+  <script>
+    function artUrl(rel) {
+      if (typeof FactionTheme !== 'undefined' && FactionTheme.artUrl) return FactionTheme.artUrl(rel);
+      const parts = String(rel).replace(/\\/g, '/').split('/');
+      return 'ra3-art://' + parts.map((p) => encodeURIComponent(p)).join('/');
+    }
+
+    async function pmWallpaperUrls() {
+      const urls = [];
+      if (window.api?.getArtFileUrl) {
+        for (const rel of ['RA3.jpg', 'ra3.jpg']) {
+          try {
+            const fileUrl = await window.api.getArtFileUrl(rel);
+            if (fileUrl) urls.push(fileUrl);
+          } catch (e) {}
+        }
+      }
+      urls.push(artUrl('RA3.jpg'));
+      return [...new Set(urls.filter(Boolean))];
+    }
+
+    async function loadPmWallpaperFirst(splash) {
+      const layer = document.getElementById('pm-wallpaper');
+      splash?.setProgress(8, '正在加载壁纸…');
+      if (!layer) return false;
+      if (layer.classList.contains('is-loaded')) {
+        splash?.setProgress(32, '壁纸已就绪');
+        return true;
+      }
+      if (typeof BootSplash === 'undefined') return false;
+      const ok = await BootSplash.preloadWallpaperToLayer(layer, await pmWallpaperUrls());
+      splash?.setProgress(ok ? 32 : 24, ok ? '壁纸已就绪' : '使用默认背景');
+      return ok;
+    }
+
+    function revealPmShell() {
+      const shell = document.getElementById('pm-shell');
+      if (!shell) return;
+      requestAnimationFrame(() => {
+        setTimeout(() => shell.classList.add('is-revealed'), 60);
+      });
+    }
+
+    function pmArtCandidates(rel) {
+      const normalized = String(rel).replace(/\\/g, '/');
+      const urls = [];
+      urls.push(artUrl(normalized));
+      urls.push('../Art/' + normalized);
+      return urls;
+    }
+
+    async function loadPmLogo() {
+      const logo = document.getElementById('pm-rat-logo');
+      if (!logo) return;
+      const urls = [];
+      if (window.api?.getArtFileUrl) {
+        for (const rel of ['Logo1.png', 'Logo.png']) {
+          try {
+            const fileUrl = await window.api.getArtFileUrl(rel);
+            if (fileUrl) urls.push(fileUrl);
+          } catch (e) {}
+        }
+      }
+      urls.push(...pmArtCandidates('Logo1.png'), ...pmArtCandidates('Logo.png'));
+      const unique = [...new Set(urls.filter(Boolean))];
+      let index = 0;
+      const tryNext = () => {
+        if (index >= unique.length) {
+          logo.removeAttribute('src');
+          logo.style.visibility = 'hidden';
+          return;
+        }
+        const url = unique[index++];
+        const probe = new Image();
+        probe.onload = () => {
+          logo.style.visibility = 'visible';
+          logo.src = url;
+        };
+        probe.onerror = tryNext;
+        probe.src = url;
+      };
+      tryNext();
+    }
+
+    function initSidebarArt() {
+      loadPmLogo();
+      if (typeof renderRandomPmQuote === 'function') renderRandomPmQuote();
+    }
+
+    const container = document.getElementById('main-container');
+
+    async function init() {
+      document.documentElement.setAttribute('data-pm-page', '1');
+      document.body.classList.add('pm-page');
+
+      const splash =
+        typeof BootSplash !== 'undefined'
+          ? BootSplash.create({
+              label: '正在启动',
+              brand: 'RA3 MOD IDE',
+              status: '正在加载壁纸…',
+            })
+          : null;
+
+      splash?.setProgress(4, '正在加载壁纸…');
+      await loadPmWallpaperFirst(splash);
+
+      initSidebarArt();
+      splash?.setProgress(42, '正在加载界面主题…');
+
+      if (typeof AppTheme !== 'undefined') {
+        await AppTheme.initAppThemeFromPreferences();
+        AppTheme.wirePreferencesListener();
+      }
+      splash?.setProgress(58, '正在连接项目管理服务…');
+
+      const sdkPath = await window.api.getGlobalSdkPath();
+      splash?.setProgress(72, sdkPath ? '正在读取最近项目…' : '等待配置 SDK 路径…');
+
+      if (!sdkPath) {
+        renderSdkSetup();
+      } else {
+        renderProjectList(sdkPath);
+      }
+
+      splash?.setProgress(92, '即将完成…');
+      await splash?.dismiss(320);
+      revealPmShell();
+    }
+
+    function renderSdkSetup() {
+      container.innerHTML = `
+        <h2 style="font-size:18px;margin-bottom:12px;color:var(--app-text-strong)">首次设置</h2>
+        <div class="sdk-setup">
+          <p style="color:var(--app-text-muted);">请先设置 RA3 MOD SDK 的根目录（包含 EALAModStudio.exe 的文件夹）</p>
+          <input type="text" id="sdk-path-input" readonly placeholder="点击下方按钮选择 SDK 目录">
+          <button class="btn-primary" onclick="selectSdk()">选择 SDK 目录</button>
+          <button class="btn-primary" id="confirm-sdk-btn" disabled onclick="confirmSdk()">确认并继续</button>
+        </div>
+      `;
+      let selectedPath = '';
+      window.selectSdk = async () => {
+        const folder = await window.api.selectSdkFolder();
+        if (folder) {
+          selectedPath = folder;
+          document.getElementById('sdk-path-input').value = folder;
+          document.getElementById('confirm-sdk-btn').disabled = false;
+        }
+      };
+      window.confirmSdk = async () => {
+        if (!selectedPath) return;
+        const res = await window.api.setGlobalSdkPath(selectedPath);
+        if (res && res.ok === false) {
+          alert(res.error || '所选目录不是有效的 RA3 MOD SDK');
+          return;
+        }
+        renderProjectList(selectedPath);
+      };
+    }
+
+    async function renderProjectList(sdkPath) {
+      const mods = await window.api.getSdkMods(sdkPath);
+      const recent = await window.api.getRecentProjects();
+      const recentToShow = recent.slice(0, 3);
+
+      let modsHtml = '';
+      if (mods.length === 0) {
+        modsHtml = '<div class="empty-text">SDK/Mods 目录下暂无项目</div>';
+      } else {
+        mods.forEach((proj) => {
+          const escapedName = escapeHtml(proj.name);
+          const escapedPath = escapeHtml(proj.path);
+          modsHtml += `<div class="project-item" data-path="${escapedPath}" onclick="openProject(this.dataset.path)">
+            <div><div class="project-name">📁 ${escapedName}</div><div class="project-path">${escapedPath}</div></div>
+          </div>`;
+        });
+      }
+
+      let recentHtml = '';
+      if (recentToShow.length > 0) {
+        recentHtml = '<div class="section-title">最近打开</div><div class="project-list">';
+        recentToShow.forEach((proj) => {
+          const escapedName = escapeHtml(proj.name);
+          const escapedPath = escapeHtml(proj.path);
+          recentHtml += `<div class="project-item" data-path="${escapedPath}" onclick="openProject(this.dataset.path)">
+            <div><div class="project-name">🕐 ${escapedName}</div><div class="project-path">${escapedPath}</div></div>
+          </div>`;
+        });
+        recentHtml += '</div>';
+      }
+
+      container.innerHTML = `
+        <div class="section">
+          <div class="section-title">SDK/Mods 中的项目（${mods.length}）</div>
+          <div class="project-list">${modsHtml}</div>
+        </div>
+        ${recentHtml}
+        <div class="actions">
+          <button class="btn-primary" onclick="openOtherProject()">📂 打开其他项目</button>
+          <button class="btn-secondary" onclick="createNewProject()">✨ 新建项目</button>
+        </div>
+        <div class="actions">
+          <button class="btn-secondary" onclick="importProject()">📥 导入项目</button>
+        </div>
+        <div class="footer">SDK：${escapeHtml(sdkPath)}</div>
+      `;
+
+      window.openProject = (p) => window.api.switchProject(p);
+      window.openOtherProject = async () => {
+        const path = await window.api.openProjectDialog();
+        if (path) window.api.switchProject(path);
+      };
+      window.createNewProject = async () => {
+        const path = await window.api.newProjectDialog();
+        if (path) window.api.switchProject(path);
+      };
+      window.importProject = async () => {
+        const path = await window.api.importProjectDialog();
+        if (path) window.api.switchProject(path);
+      };
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    init().catch((err) => {
+      console.error('[project-manager] init failed:', err);
+      revealPmShell();
+    });
+  </script>
+</body>
+</html>

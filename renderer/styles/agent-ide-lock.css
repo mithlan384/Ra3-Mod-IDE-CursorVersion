@@ -1,0 +1,57 @@
+/* AI 写入时锁定文件树内容、标签页、编辑区；不屏蔽侧栏/属性标题栏（× 可点） */
+
+html[data-agent-ide-lock="on"] #fileTree,
+html[data-agent-ide-lock="on"] #project-name,
+html[data-agent-ide-lock="on"] #file-tabs,
+html[data-agent-ide-lock="on"] #editors-container,
+html[data-agent-ide-lock="on"] #right-panel-body {
+  pointer-events: none;
+  user-select: none;
+}
+
+html[data-agent-ide-lock="on"] #fileTree,
+html[data-agent-ide-lock="on"] #project-name {
+  opacity: 0.88;
+}
+
+html[data-agent-ide-lock="on"] #file-tabs,
+html[data-agent-ide-lock="on"] #editors-container {
+  opacity: 0.9;
+}
+
+#agent-ide-lock-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--app-accent-solid, #0e639c) 18%, var(--app-surface));
+  border-bottom: 1px solid var(--app-border-solid);
+  flex-shrink: 0;
+}
+
+#agent-ide-lock-banner.hidden {
+  display: none;
+}
+
+.agent-ide-lock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--app-accent-solid, #0e639c);
+  animation: agent-ide-lock-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes agent-ide-lock-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

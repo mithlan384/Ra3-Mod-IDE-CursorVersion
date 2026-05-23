@@ -1,0 +1,210 @@
+/* IDE 底层壁纸 + 半透明毛玻璃（仅阵营主题启用） */
+
+.ide-wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #0a0e14;
+  opacity: 0;
+  transition: opacity 0.85s ease;
+}
+
+.ide-wallpaper.is-active {
+  opacity: 1;
+}
+
+.ide-wallpaper-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+
+.ide-wallpaper-slide.is-visible {
+  opacity: 0.72;
+}
+
+/* 启动动画：壁纸就绪后 UI 渐入 */
+#ide-app-shell.ide-app-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.ide-app-shell > #app-chrome,
+.ide-app-shell > #main-area,
+.ide-app-shell > #status-bar,
+.ide-app-shell > #output-resizer,
+.ide-app-shell > #output-panel {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ide-app-shell.is-boot-revealed > #app-chrome {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.18s;
+}
+
+.ide-app-shell.is-boot-revealed > #main-area {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.3s;
+}
+
+.ide-app-shell.is-boot-revealed > #status-bar {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.38s;
+}
+
+.ide-app-shell.is-boot-revealed > #output-resizer,
+.ide-app-shell.is-boot-revealed > #output-panel {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.44s;
+}
+
+/* 阵营主题壁纸模式：面板半透明，编辑器略透以保留可读性 */
+html[data-ide-wallpaper="on"] body,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] body {
+  background: transparent !important;
+}
+
+html[data-ide-wallpaper="on"] #main-area {
+  background: transparent !important;
+}
+
+html[data-ide-wallpaper="on"] #app-chrome {
+  background: rgba(12, 16, 24, 0.22) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+html[data-ide-wallpaper="on"] #sidebar,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #sidebar {
+  background: rgba(10, 14, 22, 0.16) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+html[data-ide-wallpaper="on"] #file-tabs,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #file-tabs {
+  background: rgba(10, 14, 22, 0.18) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+html[data-ide-wallpaper="on"][data-faction-theme="allied"] {
+  --ide-editor-glass-bg: rgba(8, 20, 40, 0.36);
+}
+
+html[data-ide-wallpaper="on"][data-faction-theme="soviet"] {
+  --ide-editor-glass-bg: rgba(72, 24, 28, 0.38);
+}
+
+html[data-ide-wallpaper="on"][data-faction-theme="empire"] {
+  --ide-editor-glass-bg: rgba(68, 40, 16, 0.38);
+}
+
+html[data-ide-wallpaper="on"][data-app-theme="vs-dark"] {
+  --ide-editor-glass-bg: rgba(14, 18, 26, 0.36);
+}
+
+html[data-ide-wallpaper="on"][data-app-theme="vs"] {
+  --ide-editor-glass-bg: rgba(240, 244, 250, 0.42);
+}
+
+html[data-ide-wallpaper="on"] #editor-area,
+html[data-ide-wallpaper="on"] #editors-container {
+  background: transparent !important;
+}
+
+html[data-ide-wallpaper="on"] #editor,
+html[data-ide-wallpaper="on"] #split-container {
+  background: var(--ide-editor-glass-bg, rgba(14, 18, 26, 0.36)) !important;
+  backdrop-filter: blur(14px) saturate(1.12);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
+  border-radius: 0 0 12px 0;
+}
+
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #editor,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #split-container {
+  box-shadow: inset 0 0 48px rgba(0, 0, 0, 0.12);
+}
+
+/* Monaco 内部背景须透明，毛玻璃由 #editor 容器提供 */
+html[data-ide-wallpaper="on"] .monaco-editor,
+html[data-ide-wallpaper="on"] .monaco-editor .margin,
+html[data-ide-wallpaper="on"] .monaco-editor-background,
+html[data-ide-wallpaper="on"] .monaco-editor .monaco-editor-background,
+html[data-ide-wallpaper="on"] .monaco-editor .monaco-scrollable-element.editor-scrollable {
+  background-color: transparent !important;
+}
+
+html[data-ide-wallpaper="on"] .editor-welcome,
+html[data-ide-wallpaper="on"] #editor-welcome {
+  background: var(--ide-editor-glass-bg, rgba(14, 18, 26, 0.32)) !important;
+  backdrop-filter: blur(14px) saturate(1.12);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
+}
+
+html[data-ide-wallpaper="on"] #right-panel,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #right-panel {
+  background: rgba(10, 14, 22, 0.16) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+html[data-ide-wallpaper="on"] #output-panel,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #output-panel {
+  background: rgba(10, 14, 22, 0.22) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+html[data-ide-wallpaper="on"] #status-bar,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #status-bar {
+  background: rgba(10, 14, 22, 0.24) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+html[data-ide-wallpaper="on"] #ai-panel {
+  background: rgba(10, 14, 22, 0.32) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-ide-wallpaper="on"] .panel-chrome,
+html[data-ide-wallpaper="on"] #output-header,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] .panel-chrome,
+html[data-ide-wallpaper="on"]:root[data-faction-theme] #output-header {
+  background: rgba(14, 18, 26, 0.22) !important;
+}
+
+html[data-ide-wallpaper="on"] #right-panel-body {
+  background: transparent !important;
+}
+
+html[data-ide-wallpaper="on"] .tree-node:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html[data-ide-wallpaper="on"] .tree-node.active {
+  background: var(--app-active);
+}
+
+/* 阵营主题下减弱旧的内层壁纸层 */
+#faction-bg-layer {
+  display: none !important;
+}

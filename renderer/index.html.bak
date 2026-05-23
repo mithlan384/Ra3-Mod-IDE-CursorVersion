@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RA3 IDE</title>
+  <script src="../node_modules/monaco-editor/min/vs/loader.js"></script>
+  <link rel="stylesheet" href="styles/main.css">
+  <style>
+    #editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #editors-container { display: flex; flex: 1; overflow: hidden; }
+    #editor { flex: 1; background: #1e1e1e; border-radius: 0 0 12px 0; overflow: hidden; }
+    #split-resizer { width: 4px; background: #3c3c3c; cursor: col-resize; display: none; flex-shrink: 0; transition: background 0.2s; }
+    #split-resizer:hover { background: #0e639c; }
+    #split-container { width: 0; background: #1e1e1e; display: none; overflow: hidden; border-radius: 0 0 12px 0; }
+    #project-name { padding: 8px 12px; color: #ccc; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    /* 输出面板 */
+    #output-panel { display: none; height: 150px; background: #1e1e1e; border-top: 1px solid #3c3c3c; margin: 0 8px; border-radius: 0 0 8px 8px; }
+    #output-resizer { height: 4px; background: #3c3c3c; cursor: row-resize; display: none; }
+    #output-resizer:hover { background: #0e639c; }
+    #output-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; background: #2d2d2d; color: #aaa; font-size: 12px; }
+    #output-content { height: calc(100% - 28px); overflow-y: auto; padding: 4px 12px; font-family: monospace; font-size: 12px; color: #ddd; }
+    .output-error { color: #f44747; cursor: pointer; }
+    /* 属性面板 */
+    .file-property { padding: 4px 0; font-size: 12px; color: #ccc; border-bottom: 1px solid #2d2d2d; }
+    .csf-table { width: 100%; font-size: 12px; color: #ddd; border-collapse: collapse; }
+    .csf-table th, .csf-table td { border: 1px solid #3c3c3c; padding: 4px; }
+    .csf-table td[contenteditable="true"] { background: #252525; }
+    /* AI 面板 */
+    #ai-panel { display: none; height: 200px; background: #1e1e1e; border-top: 1px solid #3c3c3c; margin: 0 8px; border-radius: 0 0 8px 8px; flex-direction: column; }
+    #ai-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; background: #2d2d2d; color: #aaa; font-size: 12px; }
+    #ai-panel-messages { flex: 1; overflow-y: auto; padding: 8px 12px; font-size: 13px; color: #ddd; }
+    #ai-panel-input-area { display: flex; padding: 8px; border-top: 1px solid #3c3c3c; }
+    #ai-panel-input { flex: 1; padding: 6px 10px; background: #3c3c3c; border: 1px solid #555; border-radius: 4px; color: #ddd; font-size: 13px; }
+    #ai-panel-send { margin-left: 8px; padding: 6px 16px; background: #0e639c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    #ai-panel-send:hover { background: #1177bb; }
+    .ai-message { margin-bottom: 8px; }
+    .ai-message.user { color: #4fc3f7; }
+    .ai-message.agent { color: #ccc; }
+    .ai-panel-buttons { display: flex; gap: 6px; margin-top: 8px; padding: 0 12px; }
+    .ai-panel-buttons button { width: auto; padding: 4px 10px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="main-area">
+    <div id="sidebar">
+      <div id="project-name">未加载项目</div>
+      <div id="fileTree"></div>
+    </div>
+    <div class="resizer" data-resizer="left">
+      <span id="sidebar-toggle" onclick="toggleFileTree()" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); cursor:pointer; font-size:12px; color:#aaa; user-select:none;">◀</span>
+    </div>
+    <div id="editor-area">
+      <div id="file-tabs"></div>
+      <div id="editors-container">
+        <div id="editor"></div>
+        <div id="split-resizer"></div>
+        <div id="split-container"></div>
+      </div>
+    </div>
+    <div class="resizer" data-resizer="right">
+      <span id="properties-toggle" onclick="togglePropertiesPanel()" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); cursor:pointer; font-size:12px; color:#aaa; user-select:none;">▶</span>
+    </div>
+    <div id="right-panel">
+      <div id="file-info"></div>
+      <div id="tga-preview" style="display:none;"></div>
+      <div id="w3x-info" style="display:none;"></div>
+      <div id="csf-editor" style="display:none;"></div>
+      <!-- AI 面板快速切换按钮 -->
+      <div style="margin-top:12px; text-align:center;">
+        <button onclick="toggleAIPanel()" style="width:auto; padding:4px 12px; font-size:12px;">🤖 AI 助手</button>
+        <button onclick="openKnowledgePanel()" style="width:auto; padding:4px 12px; font-size:12px;">📚 知识库</button>
+      </div>
+    </div>
+  </div>
+  <div id="status-bar">
+    <span id="status-cursor">行 1, 列 1</span>
+    <span id="status-lines">总行: 0</span>
+    <span id="status-wrap">自动换行: 关</span>
+    <span id="status-theme">主题: Dark</span>
+    <span id="status-spell">拼写检查: 关</span>
+    <span id="status-autosave">自动保存: 关</span>
+  </div>
+  <div id="output-resizer"></div>
+  <div id="output-panel">
+    <div id="output-header">
+      <span>输出</span>
+      <span onclick="clearOutput()" style="cursor:pointer;">✕</span>
+    </div>
+    <div id="output-content"></div>
+  </div>
+  <!-- AI 对话面板 -->
+  <div id="ai-panel">
+    <div id="ai-panel-header">
+      <span>🤖 AI 助手</span>
+      <span onclick="toggleAIPanel()" style="cursor:pointer;">✕</span>
+    </div>
+    <div id="ai-panel-messages"></div>
+    <div id="ai-panel-input-area">
+      <input type="text" id="ai-panel-input" placeholder="输入消息，按 Enter 发送...">
+      <button id="ai-panel-send" onclick="sendAIMessage()">发送</button>
+    </div>
+    <div class="ai-panel-buttons">
+      <button class="secondary" onclick="openKnowledgePanel()">📚 打开知识库</button>
+    </div>
+  </div>
+  <div id="toast"></div>
+
+  <script src="scripts/globals.js"></script>
+  <script src="scripts/utils.js"></script>
+  <script src="scripts/editor-core.js"></script>
+  <script src="scripts/bookmarks.js"></script>
+  <script src="scripts/split-view.js"></script>
+  <script src="scripts/diff.js"></script>
+  <script src="scripts/tabs.js"></script>
+  <script src="scripts/session.js"></script>
+  <script src="scripts/file-tree.js"></script>
+  <script src="scripts/output-panel.js"></script>
+  <script src="scripts/properties-panel.js"></script>
+  <script src="scripts/tga-viewer.js"></script>
+  <script src="scripts/csf-editor.js"></script>
+  <script src="scripts/agent-ui.js"></script>
+  <script>
+    function toggleFileTree() {
+      const sidebar = document.getElementById('sidebar');
+      const toggle = document.getElementById('sidebar-toggle');
+      const resizer = document.querySelector('.resizer[data-resizer="left"]');
+      if (sidebar.style.display === 'none') {
+        sidebar.style.display = 'flex';
+        resizer.style.display = 'block';
+        if (toggle) toggle.textContent = '◀';
+      } else {
+        sidebar.style.display = 'none';
+        resizer.style.display = 'block';
+        if (toggle) toggle.textContent = '▶';
+      }
+      if (editor) editor.layout();
+      if (splitEditor) splitEditor.layout();
+    }
+
+    if (window.api) {
+      window.api.onSetProjectPath((projectPath) => {
+        currentRootFolder = projectPath;
+        if (projectPath) {
+          const name = projectPath.split(/[\\\/]/).pop();
+          document.getElementById('project-name').textContent = '📁 ' + name;
+          loadFolder(projectPath);
+        }
+      });
+
+      window.api.onBeforeSwitchProject(async (newPath) => {
+        await saveSessionForSwitch();
+        window.api.sendSwitchingReady(newPath);
+      });
+    }
+
+    function updateStatusBar() {
+      if (!editor) return;
+      const pos = editor.getPosition();
+      const model = editor.getModel();
+      if (pos && model) {
+        document.getElementById('status-cursor').textContent = `行 ${pos.lineNumber}, 列 ${pos.column}`;
+        document.getElementById('status-lines').textContent = `总行: ${model.getLineCount()}`;
+      }
+      document.getElementById('status-wrap').textContent =
+        `自动换行: ${editor.getOption(monaco.editor.EditorOption.wordWrap) === 'on' ? '开' : '关'}`;
+      const theme = editor.getOption(monaco.editor.EditorOption.theme) || 'vs-dark';
+      let name = 'Dark';
+      if (theme === 'vs') name = 'Light';
+      else if (theme === 'hc-black') name = '高对比度';
+      else if (theme.startsWith('custom-')) name = '自定义';
+      document.getElementById('status-theme').textContent = `主题: ${name}`;
+      document.getElementById('status-spell').textContent = `拼写检查: ${spellcheckEnabled ? '开' : '关'}`;
+      document.getElementById('status-autosave').textContent =
+        `自动保存: ${autoSaveIntervalSeconds > 0 ? autoSaveIntervalSeconds + 's' : '关'}`;
+    }
+
+    async function performSpellCheck() {
+      if (!spellcheckEnabled || !editor) return;
+      const model = editor.getModel();
+      if (!model) return;
+      const text = model.getValue();
+      const errors = await window.api.checkSpelling(text);
+      const newDecos = [];
+      errors.forEach(err => {
+        const sp = model.getPositionAt(err.start);
+        const ep = model.getPositionAt(err.end);
+        newDecos.push({
+          range: new monaco.Range(sp.lineNumber, sp.column, ep.lineNumber, ep.column),
+          options: { className: 'spell-error-wave' }
+        });
+      });
+      spellDecorations = editor.deltaDecorations(spellDecorations, newDecos);
+    }
+
+    function showTabContextMenu(e, filePath) {
+      e.preventDefault(); e.stopPropagation();
+      const exist = document.querySelector('.context-menu'); if (exist) exist.remove();
+      const menu = document.createElement('div'); menu.className = 'context-menu';
+      menu.style.left = e.clientX + 'px'; menu.style.top = e.clientY + 'px';
+      const cleanup = () => { if (menu) menu.remove(); };
+      const items = [
+        { label: '关闭', action: () => { closeFile(filePath); cleanup(); } },
+        { label: '关闭其他', action: () => { openFiles = openFiles.filter(fp => fp === filePath); if (!openFiles.includes(currentFile)) { if (openFiles.length > 0) switchToFile(openFiles[openFiles.length-1]); else { currentFile = null; editor.setValue('无文件'); } } renderTabs(); cleanup(); } },
+        { label: '关闭右侧', action: () => { const idx = openFiles.indexOf(filePath); if (idx >= 0) openFiles = openFiles.slice(0, idx+1); if (!openFiles.includes(currentFile)) { if (openFiles.length > 0) switchToFile(openFiles[openFiles.length-1]); else { currentFile = null; editor.setValue('无文件'); } } renderTabs(); cleanup(); } },
+        { label: '关闭所有', action: () => { openFiles = []; currentFile = null; editor.setValue('无文件'); renderTabs(); cleanup(); } }
+      ];
+      items.forEach(it => { const div = document.createElement('div'); div.className = 'context-menu-item'; div.textContent = it.label; div.onclick = () => { it.action(); }; menu.appendChild(div); });
+      document.body.appendChild(menu);
+      const close = (ev) => { if (!menu.contains(ev.target)) { cleanup(); document.removeEventListener('click', close); } };
+      setTimeout(() => document.addEventListener('click', close), 0);
+    }
+
+    if (window.api) {
+      window.api.onMenuSave(() => saveCurrentFile());
+      window.api.onMenuSaveAll(() => saveAllFiles());
+      window.api.onMenuFind(() => editor.getAction('actions.find').run());
+      window.api.onMenuFindReplace(() => editor.getAction('editor.action.startFindReplaceAction').run());
+      window.api.onMenuDuplicateLine(() => editor.getAction('duplicate-line').run());
+      window.api.onMenuDeleteLine(() => editor.getAction('delete-line').run());
+      window.api.onMenuMoveLineUp(() => editor.getAction('move-line-up').run());
+      window.api.onMenuMoveLineDown(() => editor.getAction('move-line-down').run());
+      window.api.onMenuToggleWhitespace((checked) => editor.updateOptions({ renderWhitespace: checked ? 'all' : 'none' }));
+      window.api.onMenuToggleWordwrap((checked) => { editor.updateOptions({ wordWrap: checked ? 'on' : 'off' }); updateStatusBar(); });
+      window.api.onMenuSetTheme((theme) => { editor.updateOptions({ theme }); updateStatusBar(); });
+      window.api.onMenuCustomTheme(() => showCustomThemeDialog());
+      window.api.onMenuAutoSaveSettings(() => showAutoSaveSettings());
+      window.api.onMenuToggleSpellcheck((checked) => { spellcheckEnabled = checked; if (!checked) { spellDecorations = editor.deltaDecorations(spellDecorations, []); } else { performSpellCheck(); } updateStatusBar(); });
+      window.api.onMenuSplitEditor(() => openSplitView());
+      window.api.onMenuCloseSplit(() => closeSplitView());
+      window.api.onPreferencesChanged((prefs) => { if (prefs.theme) { editor.updateOptions({ theme: prefs.theme }); updateStatusBar(); } if (typeof setupAutoSave === 'function' && typeof prefs.autoSaveInterval === 'number') setupAutoSave(prefs.autoSaveInterval); });
+      window.api.onBeforeClose(async () => { const unsaved = []; for (const [fp, dirty] of dirtyFiles.entries()) if (dirty) unsaved.push(fp); if (unsaved.length === 0) { await saveSessionAndClose('discard'); return; } const choice = await window.api.showUnsavedDialog(unsaved); if (choice === 'cancel') return; await saveSessionAndClose(choice); });
+    }
+
+    function initResizers() {
+      const resizers = document.querySelectorAll('.resizer'); let currentResizer = null, startX = 0, startWidth = 0, targetPanel = null;
+      function onMouseDown(e) { currentResizer = e.target; if (currentResizer.dataset.resizer === 'left') targetPanel = document.getElementById('sidebar'); else if (currentResizer.dataset.resizer === 'right') targetPanel = document.getElementById('right-panel'); else return; startX = e.clientX; startWidth = parseInt(getComputedStyle(targetPanel).width, 10); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); currentResizer.style.background = 'rgba(14,99,156,0.5)'; }
+      function onMouseMove(e) { if (!currentResizer || !targetPanel) return; const dx = e.clientX - startX; let newWidth = currentResizer.dataset.resizer === 'left' ? startWidth + dx : startWidth - dx; newWidth = Math.max(parseInt(targetPanel.style.minWidth || 150), Math.min(newWidth, parseInt(targetPanel.style.maxWidth || 500))); targetPanel.style.width = newWidth + 'px'; }
+      function onMouseUp() { currentResizer.style.background = ''; document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); currentResizer = null; targetPanel = null; if (editor) editor.layout(); if (splitEditor) splitEditor.layout(); }
+      resizers.forEach(r => r.addEventListener('mousedown', onMouseDown));
+    }
+
+    async function attemptLoadProjectFolder() {
+      try {
+        const projectPath = await window.api.getProjectPath();
+        if (projectPath) {
+          currentRootFolder = projectPath;
+          document.getElementById('project-name').textContent = '📁 ' + projectPath.split(/[\\\/]/).pop();
+          loadFolder(projectPath);
+        }
+      } catch (err) { }
+    }
+
+    window.addEventListener('load', () => {
+      initResizers();
+      initOutputPanel();
+      if (window.api && window.api.sendRendererReady) {
+        window.api.sendRendererReady();
+      }
+      setTimeout(attemptLoadProjectFolder, 100);
+      setTimeout(attemptLoadProjectFolder, 500);
+    });
+  </script>
+</body>
+</html>

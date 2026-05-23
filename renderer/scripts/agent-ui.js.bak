@@ -1,0 +1,191 @@
+// renderer/scripts/agent-ui.js
+let lastExecutionId = null;
+
+function toggleAIPanel() {
+  const panel = document.getElementById('ai-panel');
+  if (panel.style.display === 'none' || panel.style.display === '') {
+    panel.style.display = 'flex';
+    setTimeout(() => { document.getElementById('ai-panel-input')?.focus(); }, 100);
+  } else {
+    panel.style.display = 'none';
+  }
+  if (typeof editor !== 'undefined' && editor) editor.layout();
+  if (typeof splitEditor !== 'undefined' && splitEditor) splitEditor.layout();
+}
+
+function openKnowledgePanel() {
+  if (window.api && window.api.openKnowledgePanel) {
+    window.api.openKnowledgePanel();
+  } else {
+    appendMessage('agent', '知识库面板功能不可用');
+  }
+}
+
+async function sendAIMessage() {
+  const input = document.getElementById('ai-panel-input');
+  const message = input.value.trim();
+  if (!message) return;
+  appendMessage('user', message);
+  input.value = '';
+
+  if (message === '/help') {
+    const helpText = `可用命令：
+直接输入自然语言需求，Agent 会自动执行。
+也可手动工具命令：
+/tool listProjectStructure [子目录]
+/tool searchFiles 关键词
+/tool readXml 文件 点路径
+/tool writeXml 文件 点路径 新值
+/tool backupFile 文件
+/tool restoreFile 文件
+/tool getUnitInheritance 单位ID
+/tool openFileInEditor 文件 [行号]
+/tool getXmlStructure 文件 [深度]
+/tool setUnitProperty 单位ID 属性路径 新值
+/tool addWeaponToUnit 单位ID 武器模板 [槽位]
+/tool findReferences 关键词`;
+    appendMessage('agent', helpText);
+    return;
+  }
+
+  if (window.api && window.api.agent && window.api.agent.sendChat) {
+    window.api.agent.sendChat(message);
+  }
+}
+
+function appendMessage(role, text) {
+  const container = document.getElementById('ai-panel-messages');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = `ai-message ${role}`;
+  if (typeof text === 'object') {
+    div.innerHTML = `<pre style="margin:0; white-space:pre-wrap;">${escapeHtml(JSON.stringify(text, null, 2))}</pre>`;
+  } else {
+    div.textContent = (role === 'user' ? '🧑 ' : '🤖 ') + text;
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+
+  const execIdMatch = text.match(/\[执行ID: ([^\]]+)\]/);
+  if (execIdMatch && role === 'agent') {
+    const execId = execIdMatch[1];
+    lastExecutionId = execId;
+    addConfirmButton(container, execId);
+  }
+}
+
+function addConfirmButton(container, execId) {
+  if (document.getElementById(`confirm-${execId}`)) return;
+  const btnDiv = document.createElement('div');
+  btnDiv.id = `confirm-${execId}`;
+  btnDiv.style.marginTop = '8px';
+  const btn = document.createElement('button');
+  btn.textContent = '✓ 确认正确，记录到知识库';
+  btn.style.width = 'auto';
+  btn.style.padding = '4px 12px';
+  btn.style.fontSize = '12px';
+  btn.onclick = () => {
+    if (window.api && window.api.agent && window.api.agent.confirmCorrect) {
+      window.api.agent.confirmCorrect(execId);
+      btn.textContent = '已记录 ✓';
+      btn.disabled = true;
+    }
+  };
+  btnDiv.appendChild(btn);
+  container.appendChild(btnDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+if (window.api && window.api.agent && window.api.agent.onResponse) {
+  window.api.agent.onResponse((text) => {
+    appendMessage('agent', text);
+  });
+}
+
+if (window.api && window.api.agent && window.api.agent.onRefreshFile) {
+  window.api.agent.onRefreshFile((relativePath) => {
+    if (typeof currentRootFolder !== 'undefined' && currentRootFolder) {
+      const fullPath = (currentRootFolder.replace(/\\/g, '/') + '/' + relativePath).replace(/\\/g, '/');
+      window.api.readFile(fullPath).then(content => {
+        if (content) {
+          fileContents.set(fullPath, content);
+          if (typeof currentFile !== 'undefined' && normalizePath(currentFile) === normalizePath(fullPath) && typeof editor !== 'undefined' && editor) {
+            editor.setValue(content);
+            showToast('文件已自动刷新: ' + relativePath);
+          }
+        }
+      });
+      if (typeof updateFileTreeDirtyMarkers === 'function') updateFileTreeDirtyMarkers();
+    }
+  });
+}
+
+if (window.api && window.api.agent && window.api.agent.onOpenFile) {
+  window.api.agent.onOpenFile((data) => {
+    if (!data || !data.file) return;
+    const fullPath = normalizePath(currentRootFolder + '/' + data.file);
+    let existingPath = null;
+    if (typeof openFiles !== 'undefined' && openFiles) {
+      for (const fp of openFiles) {
+        if (normalizePath(fp) === fullPath) { existingPath = fp; break; }
+      }
+    }
+    const targetPath = existingPath || fullPath;
+    window.api.readFile(targetPath).then(content => {
+      if (content) {
+        fileContents.set(targetPath, content);
+        dirtyFiles.set(targetPath, false);
+      }
+    }).finally(() => {
+      if (typeof switchToFile === 'function') {
+        switchToFile(targetPath).then(() => {
+          if (data.line && editor) {
+            editor.revealLineInCenter(data.line);
+            editor.setPosition({ lineNumber: data.line, column: data.column || 1 });
+          }
+        });
+      }
+    });
+  });
+}
+
+window.getIdeState = function() {
+  const state = {
+    activeFile: currentFile || null,
+    openFiles: openFiles ? openFiles.slice(0, 10) : [],
+    cursorLine: null,
+    cursorColumn: null,
+    selectedText: null
+  };
+  if (editor) {
+    const pos = editor.getPosition();
+    if (pos) {
+      state.cursorLine = pos.lineNumber;
+      state.cursorColumn = pos.column;
+    }
+    const selection = editor.getSelection();
+    if (selection && !selection.isEmpty()) {
+      const model = editor.getModel();
+      if (model) state.selectedText = model.getValueInRange(selection);
+    }
+  }
+  return state;
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('ai-panel-input');
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendAIMessage();
+      }
+    });
+  }
+});

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>设置</title>
+  <link rel="stylesheet" href="styles/app-theme.css">
+  <link rel="stylesheet" href="styles/faction-theme.css">
+  <link rel="stylesheet" href="styles/standalone-window.css">
+</head>
+<body class="standalone-window prefs-layout">
+  <div class="prefs-tab-nav">
+    <button type="button" class="prefs-tab-btn active" onclick="switchTab('theme')">主题风格</button>
+    <button type="button" class="prefs-tab-btn" onclick="switchTab('autosave')">自动保存</button>
+    <button type="button" class="prefs-tab-btn" onclick="switchTab('sdk')">SDK 设置</button>
+    <button type="button" class="prefs-tab-btn" onclick="switchTab('ai')">AI 设置</button>
+    <button type="button" class="prefs-tab-btn" onclick="switchTab('search')">搜索设置</button>
+  </div>
+  <div class="prefs-tab-content">
+    <div id="theme-panel" class="prefs-tab-panel active">
+      <h2>外观主题</h2>
+      <div class="standalone-section">
+        <label class="standalone-label" for="theme-select">界面与编辑器主题</label>
+        <select id="theme-select">
+          <option value="vs-dark">Dark</option>
+          <option value="vs">Light</option>
+          <option value="hc-black">高对比度</option>
+          <option value="allied">盟军主题</option>
+          <option value="soviet">苏联主题</option>
+          <option value="empire">帝国主题</option>
+        </select>
+        <div class="standalone-footnote" id="theme-footnote">Dark / Light 可指定自定义壁纸文件夹；盟军 / 苏联 / 帝国使用内置 Pictures 幻灯片</div>
+      </div>
+      <div class="standalone-section" id="custom-wallpaper-section">
+        <label class="standalone-label" for="custom-wallpaper-folder">自定义壁纸文件夹</label>
+        <div class="standalone-flex-row">
+          <input class="standalone-field" type="text" id="custom-wallpaper-folder" readonly placeholder="未选择">
+          <button type="button" class="app-btn app-btn--secondary" id="custom-wallpaper-pick-btn">选择文件夹...</button>
+          <button type="button" class="app-btn app-btn--secondary" id="custom-wallpaper-clear-btn">清除</button>
+        </div>
+        <div class="standalone-footnote" id="custom-wallpaper-footnote">仅 Dark / Light 主题可用；多张图片时按下方间隔幻灯片播放，仅一张时固定显示</div>
+      </div>
+      <div class="standalone-section" id="faction-slideshow-section">
+        <label class="standalone-label" for="wallpaper-slideshow-minutes">壁纸幻灯片间隔（分钟）</label>
+        <input type="number" id="wallpaper-slideshow-minutes" min="1" max="120" step="1" value="2">
+        <div class="standalone-footnote" id="slideshow-footnote">阵营主题与 Dark/Light 自定义壁纸均适用；切换图片时有约 1.2 秒淡入淡出</div>
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="ai-personality">AI 语气（可选覆盖）</label>
+        <select id="ai-personality">
+          <option value="default">默认</option>
+          <option value="allied">盟军</option>
+          <option value="soviet">苏联</option>
+          <option value="empire">帝国</option>
+          <option value="sync">跟随界面主题</option>
+        </select>
+        <div class="standalone-footnote">选「跟随界面主题」时，盟军/苏联/帝国界面会自动匹配对应情报官语气</div>
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label">AI 对话用户头像</label>
+        <div class="avatar-upload-block">
+          <div id="user-avatar-preview" class="user-avatar-preview" title="预览">🧑</div>
+          <div class="avatar-upload-actions">
+            <button type="button" class="app-btn app-btn--primary" onclick="pickUserAvatar()">上传头像</button>
+            <button type="button" class="app-btn app-btn--secondary" id="user-avatar-clear-btn" onclick="clearUserAvatarPref()" disabled>恢复默认</button>
+          </div>
+        </div>
+        <div class="standalone-footnote">显示在 AI 面板中您发送的消息旁，圆形裁剪，与 AI 头像样式一致（PNG/JPG/WEBP/GIF）</div>
+      </div>
+    </div>
+    <div id="autosave-panel" class="prefs-tab-panel">
+      <h2>自动保存</h2>
+      <div class="standalone-section">
+        <label class="standalone-label" for="autosave-interval">编辑器自动保存间隔（分钟，0 = 关闭）</label>
+        <input type="number" id="autosave-interval" min="0" step="1" value="0">
+        <div class="standalone-footnote">仅保存<strong>已打开且未保存</strong>的文件到当前 MOD 目录，不是整包备份。</div>
+      </div>
+      <div class="standalone-section">
+        <div class="checkbox-label">
+          <input type="checkbox" id="persist-settings">
+          <label for="persist-settings">记住设置（持久化）</label>
+        </div>
+        <div class="standalone-footnote">关闭后重新打开时恢复本次设置</div>
+      </div>
+
+      <h3 style="margin:24px 0 12px;font-size:15px;font-weight:600;">项目自动备份</h3>
+      <div class="standalone-section">
+        <div class="checkbox-label">
+          <input type="checkbox" id="project-backup-enabled">
+          <label for="project-backup-enabled">启用项目完整备份</label>
+        </div>
+        <div class="standalone-footnote">按周期将<strong>当前打开的 MOD 根目录</strong>复制到备份文件夹；备份前会尽量保存已修改的打开文件。</div>
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="project-backup-dir">备份目录</label>
+        <div class="standalone-flex-row">
+          <input class="standalone-field" type="text" id="project-backup-dir" readonly placeholder="未选择">
+          <button type="button" class="app-btn app-btn--secondary" id="project-backup-pick-btn">浏览...</button>
+        </div>
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label">备份周期</label>
+        <div class="standalone-flex-row" style="gap:8px;flex-wrap:wrap;">
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+            <input type="number" id="project-backup-days" min="0" max="365" step="1" value="0" style="width:56px;"> 天
+          </label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+            <input type="number" id="project-backup-hours" min="0" max="23" step="1" value="1" style="width:56px;"> 小时
+          </label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+            <input type="number" id="project-backup-minutes" min="0" max="59" step="1" value="30" style="width:56px;"> 分钟
+          </label>
+        </div>
+        <div class="standalone-footnote">例如 0 天 1 小时 30 分 = 每 90 分钟备份一次。天、时、分不能同时为 0。</div>
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="project-backup-max">保留备份份数（0 = 不限制）</label>
+        <input type="number" id="project-backup-max" min="0" max="9999" step="1" value="10">
+        <div class="standalone-footnote">超出上限后删除<strong>最早</strong>的备份。文件夹命名：<code>项目名-备份-时间戳</code>。</div>
+      </div>
+      <div class="standalone-section">
+        <button type="button" class="app-btn app-btn--secondary" id="project-backup-run-now-btn">立即备份当前项目</button>
+        <div class="standalone-footnote" id="project-backup-status-text"></div>
+      </div>
+    </div>
+    <div id="sdk-panel" class="prefs-tab-panel">
+      <h2>SDK 设置</h2>
+      <div class="standalone-section">
+        <label class="standalone-label" for="sdk-path">RA3 MOD SDK 路径</label>
+        <div class="standalone-flex-row">
+          <input class="standalone-field" type="text" id="sdk-path" readonly placeholder="未设置">
+          <button type="button" class="app-btn app-btn--secondary" onclick="selectSdkPath()">浏览...</button>
+        </div>
+        <div class="standalone-footnote">选择 RA3 MOD SDK-X 的根目录（包含 EALAModStudio.exe 的文件夹）</div>
+      </div>
+      <div class="standalone-section">
+        <h3 style="margin:0 0 8px;font-size:14px;">外部工具路径（可选，留空则自动在 SDK/tools 下查找）</h3>
+        <div class="sdk-tool-row"><label class="standalone-label">W3X 查看器</label><input class="standalone-field sdk-tool-path" type="text" id="tool-w3xViewer" placeholder="tools/W3XViewer.exe"></div>
+        <div class="sdk-tool-row"><label class="standalone-label">CSF 编辑器</label><input class="standalone-field sdk-tool-path" type="text" id="tool-csfEditor" placeholder="tools/常用工具/CSF编辑器"></div>
+        <div class="sdk-tool-row"><label class="standalone-label">VP6 转换器</label><input class="standalone-field sdk-tool-path" type="text" id="tool-vp6Converter" placeholder="VP6Converter005.exe"></div>
+        <div class="sdk-tool-row"><label class="standalone-label">VirtualDub</label><input class="standalone-field sdk-tool-path" type="text" id="tool-virtualDub" placeholder="VirtualDub.exe"></div>
+        <div class="sdk-tool-row"><label class="standalone-label">DDS 缩略图插件</label><input class="standalone-field sdk-tool-path" type="text" id="tool-ddsViewerInstaller" placeholder="DDS_viewer.exe"></div>
+        <div class="sdk-tool-row"><label class="standalone-label">VP6 编码器</label><input class="standalone-field sdk-tool-path" type="text" id="tool-vp6Codec" placeholder="vp6_vfw_codec.exe"></div>
+        <button type="button" class="app-btn app-btn--secondary" id="sdk-tools-autodetect-btn">自动检测工具路径</button>
+        <div class="standalone-footnote" id="sdk-tools-status">设置 SDK 根目录后可自动填充；文件树右键与预览页可启动对应工具。</div>
+      </div>
+    </div>
+    <div id="ai-panel" class="prefs-tab-panel">
+      <h2>AI 设置</h2>
+      <div class="standalone-section">
+        <label class="standalone-label" for="ai-endpoint">API 地址</label>
+        <input type="text" id="ai-endpoint" placeholder="https://api.deepseek.com/v1/chat/completions">
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="ai-apikey">API Key</label>
+        <input type="password" id="ai-apikey" placeholder="sk-...">
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="ai-model-preset">模型</label>
+        <select id="ai-model-preset"></select>
+        <div class="standalone-footnote" id="ai-model-footnote"></div>
+      </div>
+      <div class="section" id="ai-custom-model-row" style="display:none">
+        <label class="standalone-label" for="ai-model">自定义模型 ID</label>
+        <input type="text" id="ai-model" placeholder="例如 gpt-4o 或 deepseek-chat">
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="xml-write-mode">XML 写入格式（默认）</label>
+        <select id="xml-write-mode">
+          <option value="standard">起义时刻标准 MOD 格式（Insurrection，推荐）</option>
+          <option value="project">当前项目已有结构（需先扫描并确认学习）</option>
+        </select>
+        <div class="standalone-footnote">与 AI 对话中「标准/当前项目格式」选择联动。选「当前项目」且尚未学习时，保存后将在 AI 面板提示扫描确认。</div>
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="ai-permission-level">AI 自主操作权限</label>
+        <select id="ai-permission-level">
+          <option value="t1">T1 · 读取自动（读/扫不需确认；写入前需确认）</option>
+          <option value="t2">T2 · 部分自主（可写代码；删除/移动需确认）</option>
+          <option value="t3">T3 · 完全自主（自动操作并汇报痕迹）</option>
+        </select>
+        <div class="standalone-footnote" id="ai-permission-footnote"></div>
+      </div>
+      <div class="standalone-section" id="ai-confirmation-mode-section">
+        <label class="standalone-label" for="ai-confirmation-mode">操作确认方式</label>
+        <select id="ai-confirmation-mode">
+          <option value="batch_all">确认所有（先列出将修改/删除等操作的完整方案，您只需确认一次）</option>
+          <option value="per_item">逐条确认（每次写入、删除或破坏性操作都会单独询问您是否执行）</option>
+        </select>
+        <div class="standalone-footnote" id="ai-confirmation-mode-footnote">仅在选择 T1 或 T2 权限时生效；T3 完全自主无需确认。</div>
+      </div>
+      <div class="standalone-section">
+        <label class="standalone-label" for="ai-agent-max-steps">Agent 多步任务上限</label>
+        <select id="ai-agent-max-steps">
+          <option value="16">16 步（较快结束）</option>
+          <option value="24">24 步（默认）</option>
+          <option value="32">32 步</option>
+          <option value="48">48 步</option>
+          <option value="64">64 步</option>
+          <option value="0">无限制（直到完成或手动终止）</option>
+        </select>
+        <div class="standalone-footnote">每「步」为 Agent 向大模型请求一轮（一轮内可执行多个工具）。复杂 MOD 任务建议 48 或无限制；对话进行中可点发送栏「停止」终止。</div>
+      </div>
+    </div>
+    <div id="search-panel" class="prefs-tab-panel">
+      <h2>联网搜索设置</h2>
+      <div class="standalone-section">
+        <label class="standalone-label" for="search-provider">搜索源</label>
+        <select id="search-provider">
+          <option value="auto">自动（公网搜索 + 内置文档，推荐）</option>
+          <option value="offline">仅内置知识库（离线）</option>
+          <option value="google">Google Custom Search</option>
+          <option value="searxng">SearXNG（自建实例）</option>
+        </select>
+        <div class="standalone-footnote">「自动」无需 API Key，会通过 DuckDuckGo / 公共 SearXNG 真实联网</div>
+      </div>
+      <div id="google-section" style="display:none">
+        <div class="standalone-section">
+          <label class="standalone-label" for="search-apikey">Google API Key</label>
+          <input type="password" id="search-apikey" placeholder="AIza...">
+        </div>
+        <div class="standalone-section">
+          <label class="standalone-label" for="search-cx">自定义搜索引擎 ID (CX)</label>
+          <input type="text" id="search-cx" placeholder="...">
+        </div>
+      </div>
+      <div id="searxng-section" style="display:none">
+        <div class="standalone-section">
+          <label class="standalone-label" for="search-searxng-url">SearXNG 实例地址</label>
+          <input type="text" id="search-searxng-url" placeholder="https://searx.example.com">
+          <div class="standalone-footnote">请确保 SearXNG 实例支持 JSON API (format=json)</div>
+        </div>
+      </div>
+    </div>
+    <div class="prefs-save-row">
+      <button type="button" class="app-btn app-btn--primary" onclick="saveSettings()">保存并关闭</button>
+    </div>
+  </div>
+  <script src="scripts/app-theme.js"></script>
+  <script src="scripts/faction-theme.js"></script>
+  <script src="scripts/ide-wallpaper.js"></script>
+  <script>
+    function isCustomWallpaperTheme(theme) {
+      return theme === 'vs-dark' || theme === 'vs';
+    }
+
+    function updateCustomWallpaperUi(theme) {
+      const enabled = isCustomWallpaperTheme(theme);
+      const section = document.getElementById('custom-wallpaper-section');
+      const folderInput = document.getElementById('custom-wallpaper-folder');
+      const pickBtn = document.getElementById('custom-wallpaper-pick-btn');
+      const clearBtn = document.getElementById('custom-wallpaper-clear-btn');
+      const foot = document.getElementById('custom-wallpaper-footnote');
+      if (section) section.classList.toggle('is-disabled', !enabled);
+      if (folderInput) folderInput.disabled = !enabled;
+      if (pickBtn) pickBtn.disabled = !enabled;
+      if (clearBtn) clearBtn.disabled = !enabled;
+      if (foot) {
+        foot.textContent = enabled
+          ? '多张图片时按下方间隔幻灯片播放，仅一张时固定显示'
+          : '仅在选择 Dark 或 Light 主题时可设置自定义壁纸';
+      }
+    }
+
+    async function pickCustomWallpaperFolder() {
+      const theme = document.getElementById('theme-select')?.value;
+      if (!isCustomWallpaperTheme(theme)) return;
+      const res = await window.api.pickCustomWallpaperFolder();
+      if (res?.success && res.path) {
+        document.getElementById('custom-wallpaper-folder').value = res.path;
+      }
+    }
+
+    function clearCustomWallpaperFolder() {
+      const theme = document.getElementById('theme-select')?.value;
+      if (!isCustomWallpaperTheme(theme)) return;
+      document.getElementById('custom-wallpaper-folder').value = '';
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.prefs-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.prefs-tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.prefs-tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
+      document.getElementById(`${tabName}-panel`).classList.add('active');
+    }
+
+    async function defaultAvatarUrl() {
+      if (window.api?.getArtFileUrl) {
+        try {
+          const url = await window.api.getArtFileUrl('RAT.png');
+          if (url) return url;
+        } catch (e) {}
+      }
+      if (window.api?.getDefaultUserAvatarUrl) {
+        try {
+          const url = await window.api.getDefaultUserAvatarUrl();
+          if (url) return url;
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    function showAvatarPreviewFallback(preview) {
+      preview.innerHTML = '';
+      preview.textContent = '🧑';
+    }
+
+    async function updateUserAvatarPreview() {
+      const preview = document.getElementById('user-avatar-preview');
+      const clearBtn = document.getElementById('user-avatar-clear-btn');
+      if (!preview) return;
+      preview.innerHTML = '';
+      let src = await defaultAvatarUrl();
+      let hasCustom = false;
+      if (window.api?.getUserAvatarUrl) {
+        const res = await window.api.getUserAvatarUrl();
+        if (res?.success && res.hasAvatar && res.url) {
+          src = res.url;
+          hasCustom = true;
+        }
+      }
+      if (!src) {
+        showAvatarPreviewFallback(preview);
+        if (clearBtn) clearBtn.disabled = !hasCustom;
+        return;
+      }
+      const img = document.createElement('img');
+      img.alt = '';
+      img.onerror = () => showAvatarPreviewFallback(preview);
+      img.src = src;
+      preview.appendChild(img);
+      if (clearBtn) clearBtn.disabled = !hasCustom;
+    }
+
+    async function pickUserAvatar() {
+      if (!window.api?.pickUserAvatar) return;
+      const res = await window.api.pickUserAvatar();
+      if (res?.canceled) return;
+      if (!res?.success) {
+        alert(res?.error || '上传失败');
+        return;
+      }
+      await updateUserAvatarPreview();
+    }
+
+    async function clearUserAvatarPref() {
+      if (!window.api?.clearUserAvatar) return;
+      const res = await window.api.clearUserAvatar();
+      if (!res?.success) {
+        alert(res?.error || '清除失败');
+        return;
+      }
+      await updateUserAvatarPreview();
+    }
+
+    async function loadSettings() {
+      const prefs = await window.api.getPreferences();
+      await updateUserAvatarPreview();
+      const theme = prefs.theme || 'vs-dark';
+      document.getElementById('theme-select').value = theme;
+      document.getElementById('custom-wallpaper-folder').value = prefs.customWallpaperFolder || '';
+      updateCustomWallpaperUi(theme);
+      if (typeof AppTheme !== 'undefined') {
+        AppTheme.applyAppTheme(theme, { monaco: false, checkPersonality: false });
+      }
+
+      document.getElementById('theme-select').addEventListener('change', function () {
+        updateCustomWallpaperUi(this.value);
+        if (typeof AppTheme !== 'undefined') {
+          AppTheme.applyAppTheme(this.value, { monaco: false, checkPersonality: false });
+        }
+        const pers = document.getElementById('ai-personality');
+        if (pers && pers.value === 'sync' && typeof FactionTheme !== 'undefined') {
+          const f = FactionTheme.getFaction(this.value);
+          if (f) pers.dataset.preview = f.personality;
+        }
+      });
+      document.getElementById('custom-wallpaper-pick-btn')?.addEventListener('click', pickCustomWallpaperFolder);
+      document.getElementById('custom-wallpaper-clear-btn')?.addEventListener('click', clearCustomWallpaperFolder);
+      const wpMin = document.getElementById('wallpaper-slideshow-minutes');
+      if (wpMin) {
+        let minutes = Number(prefs.wallpaperSlideshowMinutes);
+        if (!Number.isFinite(minutes)) {
+          const legacySec = Number(prefs.wallpaperSlideshowSeconds);
+          minutes = Number.isFinite(legacySec) && legacySec > 0
+            ? Math.max(1, Math.round(legacySec / 60))
+            : 2;
+        }
+        wpMin.value = Math.min(120, Math.max(1, minutes));
+      }
+      document.getElementById('ai-personality').value =
+        prefs.aiPersonalityMode ||
+        (['allied', 'soviet', 'empire', 'default'].includes(prefs.aiPersonality) ? prefs.aiPersonality : 'sync');
+      document.getElementById('xml-write-mode').value =
+        prefs.xmlWriteMode === 'project' ? 'project' : 'standard';
+      const permSel = document.getElementById('ai-permission-level');
+      const permFoot = document.getElementById('ai-permission-footnote');
+      const permTexts = {
+        t1: '读取、搜索、扫描项目无需确认；写入、删除或回退前按下方「确认方式」处理。',
+        t2: '可自动写入/修改 XML；破坏性操作与回退按下方「确认方式」处理。',
+        t3: '自动完成读写与迁移，结束后汇报方案与修改过的文件。',
+      };
+      const confirmSel = document.getElementById('ai-confirmation-mode');
+      const confirmSection = document.getElementById('ai-confirmation-mode-section');
+      function syncConfirmationModeUi() {
+        const level = permSel?.value || 't2';
+        const t3 = level === 't3';
+        if (confirmSection) confirmSection.style.opacity = t3 ? '0.45' : '1';
+        if (confirmSel) {
+          confirmSel.disabled = t3;
+          if (t3) confirmSel.title = 'T3 完全自主，无需选择确认方式';
+          else confirmSel.title = '';
+        }
+      }
+      if (permSel) {
+        permSel.value = ['t1', 't2', 't3'].includes(prefs.aiPermissionLevel) ? prefs.aiPermissionLevel : 't2';
+        if (permFoot) permFoot.textContent = permTexts[permSel.value] || permTexts.t2;
+        permSel.addEventListener('change', () => {
+          if (permFoot) permFoot.textContent = permTexts[permSel.value] || '';
+          syncConfirmationModeUi();
+        });
+      }
+      if (confirmSel) {
+        confirmSel.value = prefs.aiConfirmationMode === 'per_item' ? 'per_item' : 'batch_all';
+      }
+      syncConfirmationModeUi();
+      document.getElementById('autosave-interval').value = Math.round((prefs.autoSaveInterval || 0) / 60);
+      document.getElementById('persist-settings').checked = prefs.persistSettings !== false;
+
+      document.getElementById('project-backup-enabled').checked = !!prefs.projectBackupEnabled;
+      document.getElementById('project-backup-dir').value = prefs.projectBackupDir || '';
+      document.getElementById('project-backup-days').value =
+        prefs.projectBackupIntervalDays != null ? prefs.projectBackupIntervalDays : 0;
+      document.getElementById('project-backup-hours').value =
+        prefs.projectBackupIntervalHours != null ? prefs.projectBackupIntervalHours : 1;
+      document.getElementById('project-backup-minutes').value =
+        prefs.projectBackupIntervalMinutes != null ? prefs.projectBackupIntervalMinutes : 30;
+      document.getElementById('project-backup-max').value =
+        prefs.projectBackupMaxCount != null ? prefs.projectBackupMaxCount : 10;
+      refreshProjectBackupStatusText();
+
+      const sdkPath = await window.api.getGlobalSdkPath();
+      if (sdkPath) document.getElementById('sdk-path').value = sdkPath;
+
+      const toolIds = ['w3xViewer', 'csfEditor', 'vp6Converter', 'virtualDub', 'ddsViewerInstaller', 'vp6Codec'];
+      const sdkTools = prefs.sdkTools || {};
+      toolIds.forEach((id) => {
+        const el = document.getElementById('tool-' + id);
+        if (el) el.value = sdkTools[id] || '';
+      });
+      await refreshSdkToolsStatus();
+      document.getElementById('sdk-tools-autodetect-btn')?.addEventListener('click', autodetectSdkTools);
+
+      // 从主进程加载 AI 配置
+      const savedAiConfig = await window.api.getAIConfig();
+      const localAi = JSON.parse(localStorage.getItem('ra3-ai-config') || '{}');
+      const aiConfig = savedAiConfig || localAi;
+      const presets = (await window.api.getAIModelPresets?.()) || [];
+      const presetSel = document.getElementById('ai-model-preset');
+      presetSel.innerHTML = '';
+      for (const p of presets) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.label;
+        opt.dataset.endpoint = p.endpoint || '';
+        opt.dataset.model = p.model || '';
+        opt.dataset.provider = p.provider || 'openai';
+        opt.dataset.footnote = p.footnote || '';
+        presetSel.appendChild(opt);
+      }
+      const presetId = aiConfig.modelPreset || aiConfig.model || 'deepseek-chat';
+      if ([...presetSel.options].some((o) => o.value === presetId)) {
+        presetSel.value = presetId;
+      } else if (aiConfig.modelPreset) {
+        presetSel.value = 'custom';
+      } else {
+        const byModel = presets.find((p) => p.model === aiConfig.model);
+        presetSel.value = byModel ? byModel.id : 'deepseek-chat';
+      }
+      applyAiPresetToFields(presetSel.value, aiConfig);
+      document.getElementById('ai-apikey').value = aiConfig.apiKey || '';
+      const stepsSel = document.getElementById('ai-agent-max-steps');
+      if (stepsSel) {
+        const stepsVal =
+          aiConfig.agentMaxSteps != null && aiConfig.agentMaxSteps !== ''
+            ? String(aiConfig.agentMaxSteps)
+            : '24';
+        if ([...stepsSel.options].some((o) => o.value === stepsVal)) {
+          stepsSel.value = stepsVal;
+        } else {
+          stepsSel.value = '24';
+        }
+      }
+      presetSel.addEventListener('change', () => applyAiPresetToFields(presetSel.value, {}));
+
+      // 搜索配置
+      const searchConfig = await window.api.getSearchConfig();
+      const provider = searchConfig && searchConfig.provider ? searchConfig.provider : 'auto';
+      document.getElementById('search-provider').value = provider;
+      toggleSearchSections(provider);
+      if (searchConfig) {
+        document.getElementById('search-apikey').value = searchConfig.apiKey || '';
+        document.getElementById('search-cx').value = searchConfig.cx || '';
+        document.getElementById('search-searxng-url').value = searchConfig.baseUrl || '';
+      }
+
+      // 监听 provider 切换
+      document.getElementById('search-provider').addEventListener('change', function() {
+        toggleSearchSections(this.value);
+      });
+    }
+
+    function applyAiPresetToFields(presetId, saved) {
+      const presetSel = document.getElementById('ai-model-preset');
+      const opt = presetSel?.selectedOptions?.[0];
+      const foot = document.getElementById('ai-model-footnote');
+      const customRow = document.getElementById('ai-custom-model-row');
+      const isCustom = presetId === 'custom';
+      customRow.style.display = isCustom ? '' : 'none';
+      if (opt?.dataset.footnote) foot.textContent = opt.dataset.footnote;
+      else foot.textContent = isCustom ? '请填写兼容 OpenAI Chat Completions 的地址与模型名；Anthropic 请选 Claude 预设。' : '';
+      if (!isCustom && opt) {
+        if (opt.dataset.endpoint) document.getElementById('ai-endpoint').value = opt.dataset.endpoint;
+        if (opt.dataset.model) document.getElementById('ai-model').value = opt.dataset.model;
+      } else if (saved.endpoint) {
+        document.getElementById('ai-endpoint').value = saved.endpoint;
+        document.getElementById('ai-model').value = saved.model || '';
+      }
+    }
+
+    function toggleSearchSections(provider) {
+      document.getElementById('google-section').style.display = provider === 'google' ? '' : 'none';
+      document.getElementById('searxng-section').style.display = provider === 'searxng' ? '' : 'none';
+    }
+
+    async function selectSdkPath() {
+      const folder = await window.api.selectSdkFolder();
+      if (folder) {
+        document.getElementById('sdk-path').value = folder;
+        await autodetectSdkTools();
+      }
+    }
+
+    async function autodetectSdkTools() {
+      if (!window.api?.getDefaultSdkToolsPaths) return;
+      const res = await window.api.getDefaultSdkToolsPaths();
+      if (!res?.success || !res.paths) return;
+      for (const [key, p] of Object.entries(res.paths)) {
+        const el = document.getElementById('tool-' + key);
+        if (el && p) el.value = p;
+      }
+      await refreshSdkToolsStatus();
+    }
+
+    async function refreshSdkToolsStatus() {
+      const foot = document.getElementById('sdk-tools-status');
+      if (!foot || !window.api?.getSdkToolStatus) return;
+      const res = await window.api.getSdkToolStatus();
+      if (!res?.success) return;
+      const lines = Object.entries(res.tools || {}).map(([k, v]) => {
+        const ok = v.exists ? '✓' : '✗';
+        return `${ok} ${k}: ${v.resolved || '未找到'}`;
+      });
+      foot.innerHTML = lines.length
+        ? lines.map((l) => `<div>${escapeHtml(l)}</div>`).join('')
+        : '设置 SDK 根目录后点击「自动检测」';
+    }
+
+    function escapeHtml(t) {
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function collectSdkTools() {
+      const ids = ['w3xViewer', 'csfEditor', 'vp6Converter', 'virtualDub', 'ddsViewerInstaller', 'vp6Codec'];
+      const out = {};
+      ids.forEach((id) => {
+        const v = document.getElementById('tool-' + id)?.value?.trim();
+        if (v) out[id] = v;
+      });
+      return out;
+    }
+
+    function resolveAiPersonality(theme, personalitySelect) {
+      const v = personalitySelect;
+      if (v === 'sync') {
+        if (typeof FactionTheme !== 'undefined' && FactionTheme.isFactionTheme(theme)) {
+          return FactionTheme.getFaction(theme).personality;
+        }
+        return 'default';
+      }
+      return v;
+    }
+
+    function projectBackupIntervalMinutesTotal() {
+      const d = Math.max(0, parseInt(document.getElementById('project-backup-days')?.value, 10) || 0);
+      const h = Math.max(0, parseInt(document.getElementById('project-backup-hours')?.value, 10) || 0);
+      const m = Math.max(0, parseInt(document.getElementById('project-backup-minutes')?.value, 10) || 0);
+      return d * 24 * 60 + h * 60 + m;
+    }
+
+    async function refreshProjectBackupStatusText() {
+      const el = document.getElementById('project-backup-status-text');
+      if (!el || !window.api?.getProjectBackupStatus) return;
+      try {
+        const res = await window.api.getProjectBackupStatus();
+        const s = res?.data;
+        if (!s) return;
+        const parts = [];
+        if (s.running) parts.push('状态：备份进行中…');
+        else if (s.lastError) parts.push('上次失败：' + s.lastError);
+        else if (s.lastRunAt) {
+          parts.push('上次成功：' + new Date(s.lastRunAt).toLocaleString());
+          if (s.lastDest) parts.push('路径：' + s.lastDest);
+        }
+        if (s.nextRunAt && s.enabled) {
+          parts.push('下次计划：' + new Date(s.nextRunAt).toLocaleString());
+        }
+        el.textContent = parts.join(' · ') || '尚未执行过备份';
+      } catch (e) {
+        el.textContent = '';
+      }
+    }
+
+    async function pickProjectBackupDir() {
+      if (!window.api?.pickProjectBackupDir) return;
+      const res = await window.api.pickProjectBackupDir();
+      if (res?.success && res.path) {
+        document.getElementById('project-backup-dir').value = res.path;
+      }
+    }
+
+    document.getElementById('project-backup-pick-btn')?.addEventListener('click', pickProjectBackupDir);
+    document.getElementById('project-backup-run-now-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('project-backup-run-now-btn');
+      if (btn) btn.disabled = true;
+      try {
+        const res = await window.api.runProjectBackupNow();
+        if (res?.success) alert('备份完成：\n' + (res.folderName || res.dest));
+        else alert(res?.error || '备份失败');
+        await refreshProjectBackupStatusText();
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    async function saveSettings() {
+      const existing = await window.api.getPreferences();
+      const theme = document.getElementById('theme-select').value;
+      const personalityRaw = document.getElementById('ai-personality').value;
+      const newPrefs = {
+        ...existing,
+        theme,
+        aiPersonality: resolveAiPersonality(theme, personalityRaw),
+        aiPersonalityMode: personalityRaw,
+        xmlWriteMode: document.getElementById('xml-write-mode').value === 'project' ? 'project' : 'standard',
+        aiPermissionLevel: document.getElementById('ai-permission-level')?.value || 't2',
+        aiConfirmationMode:
+          document.getElementById('ai-confirmation-mode')?.value === 'per_item' ? 'per_item' : 'batch_all',
+        wallpaperSlideshowMinutes: Math.min(
+          120,
+          Math.max(1, parseInt(document.getElementById('wallpaper-slideshow-minutes')?.value, 10) || 2)
+        ),
+        customWallpaperFolder: isCustomWallpaperTheme(theme)
+          ? (document.getElementById('custom-wallpaper-folder')?.value || '').trim()
+          : existing.customWallpaperFolder || '',
+        autoSaveInterval: (parseInt(document.getElementById('autosave-interval').value) || 0) * 60,
+        persistSettings: document.getElementById('persist-settings').checked,
+        spellcheckEnabled: false,
+        sdkTools: collectSdkTools(),
+        projectBackupEnabled: !!document.getElementById('project-backup-enabled')?.checked,
+        projectBackupDir: (document.getElementById('project-backup-dir')?.value || '').trim(),
+        projectBackupIntervalDays: Math.max(
+          0,
+          parseInt(document.getElementById('project-backup-days')?.value, 10) || 0
+        ),
+        projectBackupIntervalHours: Math.max(
+          0,
+          parseInt(document.getElementById('project-backup-hours')?.value, 10) || 0
+        ),
+        projectBackupIntervalMinutes: Math.max(
+          0,
+          parseInt(document.getElementById('project-backup-minutes')?.value, 10) || 0
+        ),
+        projectBackupMaxCount: Math.max(
+          0,
+          parseInt(document.getElementById('project-backup-max')?.value, 10) || 0
+        ),
+      };
+      if (newPrefs.projectBackupEnabled) {
+        if (!newPrefs.projectBackupDir) {
+          alert('请设置项目备份目录');
+          return;
+        }
+        const totalMin =
+          newPrefs.projectBackupIntervalDays * 24 * 60 +
+          newPrefs.projectBackupIntervalHours * 60 +
+          newPrefs.projectBackupIntervalMinutes;
+        if (totalMin <= 0) {
+          alert('备份周期不能全为 0');
+          return;
+        }
+      }
+      await window.api.savePreferences(newPrefs);
+      await refreshProjectBackupStatusText();
+      if (
+        newPrefs.aiPersonalityMode === 'sync' &&
+        typeof FactionTheme !== 'undefined' &&
+        FactionTheme.isFactionTheme(theme) &&
+        window.api.checkThemePersonality
+      ) {
+        await window.api.checkThemePersonality(theme);
+      }
+
+      const sdkPath = document.getElementById('sdk-path').value.trim();
+      if (sdkPath) {
+        const sdkRes = await window.api.setGlobalSdkPath(sdkPath);
+        if (sdkRes && sdkRes.ok === false) {
+          alert(sdkRes.error || 'SDK 路径无效');
+          return;
+        }
+      }
+
+      const presetSel = document.getElementById('ai-model-preset');
+      const opt = presetSel.selectedOptions[0];
+      const aiConfig = {
+        modelPreset: presetSel.value,
+        provider: opt?.dataset?.provider || 'openai',
+        endpoint: document.getElementById('ai-endpoint').value.trim(),
+        apiKey: document.getElementById('ai-apikey').value.trim(),
+        model: document.getElementById('ai-model').value.trim() || opt?.dataset?.model || 'deepseek-chat',
+        agentMaxSteps: parseInt(document.getElementById('ai-agent-max-steps')?.value, 10) || 24,
+        maxTokens: 8192,
+        deepThink: true,
+        webSearch: false,
+      };
+      // 保存搜索配置
+      const provider = document.getElementById('search-provider').value;
+      const searchConfig = { provider };
+      if (provider === 'google') {
+        searchConfig.apiKey = document.getElementById('search-apikey').value.trim();
+        searchConfig.cx = document.getElementById('search-cx').value.trim();
+      } else if (provider === 'searxng') {
+        searchConfig.baseUrl = document.getElementById('search-searxng-url').value.trim();
+      }
+      await window.api.saveSearchConfig(searchConfig);
+
+      // 保存到主进程文件
+      const saveRes = await window.api.saveAIConfig(aiConfig);
+      if (saveRes?.storedPlaintext) {
+        alert(
+          '已保存 AI 配置，但当前系统无法使用系统级加密，API Key 将以受限方式存储。\n' +
+            '建议在受信任的本机环境使用，或升级/修复 Electron safeStorage 支持。'
+        );
+      } else if (saveRes?.success === false) {
+        alert('保存 AI 配置失败：' + (saveRes.error || '未知错误'));
+        return;
+      }
+      // localStorage 副本（不含密钥）
+      const lsCopy = { ...aiConfig };
+      delete lsCopy.apiKey;
+      localStorage.setItem('ra3-ai-config', JSON.stringify(lsCopy));
+
+      window.close();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      if (window.api?.onUserAvatarChanged) {
+        window.api.onUserAvatarChanged(() => updateUserAvatarPreview());
+      }
+    });
+  </script>
+</body>
+</html>

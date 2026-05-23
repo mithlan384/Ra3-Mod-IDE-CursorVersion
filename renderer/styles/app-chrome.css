@@ -1,0 +1,179 @@
+/* Windows：titleBarOverlay + 页面内菜单栏 */
+
+:root {
+  /* 与 main/window-theme.js titleBarOverlay.height 一致，供 AI 面板等 fixed 层避让 */
+  --app-titlebar-overlay-height: 32px;
+}
+
+body.win-overlay-chrome {
+  flex-direction: column;
+}
+
+#app-chrome {
+  display: none;
+  flex-shrink: 0;
+  background: var(--chrome-bar-bg);
+  border-bottom: 1px solid var(--app-border);
+  z-index: 10000;
+  user-select: none;
+}
+
+body.win-overlay-chrome #app-chrome {
+  display: block;
+}
+
+/* 单行：标题 + 菜单靠左，右侧空白可拖动窗口 */
+#app-chrome-menu-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  height: 30px;
+  padding-right: 136px;
+  -webkit-app-region: no-drag;
+}
+
+.app-chrome-title {
+  flex: 0 0 auto;
+  padding: 0 6px 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text-strong);
+  white-space: nowrap;
+  -webkit-app-region: drag;
+}
+
+#app-menu-bar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 0;
+  -webkit-app-region: no-drag;
+}
+
+.app-chrome-drag {
+  flex: 1 1 auto;
+  min-width: 32px;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+/* 覆盖 main.css 的 button { width:100% }，菜单项紧凑左对齐 */
+#app-menu-bar .app-menu-item {
+  width: auto !important;
+  min-width: 0;
+  max-width: none;
+  flex: 0 0 auto;
+  padding: 2px 10px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--app-text);
+  font-size: 12px;
+  font-weight: normal;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  line-height: 26px;
+  cursor: default;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+#app-menu-bar .app-menu-item:hover {
+  background: var(--app-hover) !important;
+  color: var(--app-text-strong);
+}
+
+#app-menu-bar .app-menu-item:active {
+  background: var(--app-active) !important;
+}
+
+body.win-overlay-chrome #main-area {
+  flex: 1;
+  min-height: 0;
+  /* titleBarOverlay 下默认可拖动，必须显式标记否则侧栏/属性 × 等按钮点不到 */
+  -webkit-app-region: no-drag;
+}
+
+body.win-overlay-chrome #status-bar,
+body.win-overlay-chrome #output-panel,
+body.win-overlay-chrome #output-resizer {
+  -webkit-app-region: no-drag;
+}
+
+/* 主题化下拉菜单（紧贴菜单项下方） */
+.app-menu-dropdown {
+  position: fixed;
+  z-index: 20000;
+  min-width: 200px;
+  max-width: 360px;
+  padding: 4px 0;
+  background: var(--app-surface-solid);
+  color: var(--app-text);
+  border: 1px solid var(--app-border-solid);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px var(--app-shadow);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.app-menu-dropdown-item {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100% !important;
+  min-width: 100%;
+  padding: 6px 12px !important;
+  margin: 0;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--app-text) !important;
+  font-size: 12px !important;
+  font-weight: normal !important;
+  text-align: left;
+  cursor: default;
+  backdrop-filter: none;
+  box-shadow: none;
+  gap: 16px;
+}
+
+.app-menu-dropdown-item:hover:not(:disabled) {
+  background: var(--app-hover) !important;
+  color: var(--app-text-strong) !important;
+}
+
+.app-menu-dropdown-item.disabled,
+.app-menu-dropdown-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.app-menu-dropdown-item.checked::before {
+  content: '✓';
+  margin-right: 6px;
+  color: var(--app-accent-solid);
+  flex-shrink: 0;
+}
+
+.app-menu-dropdown-label {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+
+.app-menu-dropdown-accel {
+  flex: 0 0 auto;
+  opacity: 0.65;
+  font-size: 11px;
+  margin-left: 12px;
+}
+
+.app-menu-dropdown-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--app-border-subtle);
+}

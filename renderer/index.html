@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RA3 IDE</title>
+  <script src="../node_modules/monaco-editor/min/vs/loader.js"></script>
+  <link rel="stylesheet" href="styles/app-theme.css">
+  <link rel="stylesheet" href="styles/faction-theme.css">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/agent-panel.css">
+  <link rel="stylesheet" href="styles/editor-welcome.css">
+  <link rel="stylesheet" href="styles/agent-ide-lock.css">
+  <link rel="stylesheet" href="styles/app-chrome.css">
+  <link rel="stylesheet" href="styles/ide-wallpaper.css">
+  <link rel="stylesheet" href="styles/boot-splash.css">
+  <style>
+    #editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #editors-container { display: flex; flex: 1; overflow: hidden; }
+    #editor { flex: 1; background: var(--app-editor-bg); border-radius: 0 0 12px 0; overflow: hidden; }
+    #media-preview { flex: 1; min-width: 0; border-radius: 0 0 12px 0; }
+    #split-resizer { width: 4px; background: var(--app-border-solid); cursor: col-resize; display: none; flex-shrink: 0; transition: background 0.2s; }
+    #split-resizer:hover { background: var(--app-accent-solid); }
+    #split-container { width: 0; background: var(--app-editor-bg); display: none; overflow: hidden; border-radius: 0 0 12px 0; }
+    #project-name { padding: 8px 12px; color: var(--app-text); font-size: 13px; border-bottom: 1px solid var(--app-border-subtle); }
+  </style>
+</head>
+<body>
+  <div id="ide-wallpaper" class="ide-wallpaper" aria-hidden="true">
+    <div class="ide-wallpaper-slide ide-wallpaper-slide-a"></div>
+    <div class="ide-wallpaper-slide ide-wallpaper-slide-b"></div>
+  </div>
+  <div id="ide-boot-mount"></div>
+  <div id="ide-app-shell" class="ide-app-shell">
+  <header id="app-chrome" aria-label="应用菜单">
+    <div id="app-chrome-menu-row">
+      <span id="app-window-title" class="app-chrome-title">RA3 MOD IDE</span>
+      <nav id="app-menu-bar" aria-label="主菜单"></nav>
+      <div class="app-chrome-drag" aria-hidden="true"></div>
+    </div>
+  </header>
+  <div id="main-area">
+    <div id="sidebar">
+      <div class="panel-chrome sidebar-panel-chrome">
+        <span class="panel-chrome-title">文件</span>
+        <button type="button" class="panel-close-btn" id="sidebar-close-btn" title="收起文件树"><span aria-hidden="true">×</span></button>
+        <div class="file-tree-search-wrap" id="file-tree-search-wrap">
+          <input type="text" id="file-tree-search" class="file-tree-search-input" placeholder="输入文件名搜索…" autocomplete="off" spellcheck="false" />
+          <div id="file-tree-search-dropdown" class="file-tree-search-dropdown hidden" role="listbox"></div>
+        </div>
+      </div>
+      <div id="project-name">未加载项目</div>
+      <div id="fileTree"></div>
+    </div>
+    <div class="resizer" data-resizer="left">
+      <span id="sidebar-toggle" title="展开/收起文件树">◀</span>
+    </div>
+    <div id="editor-area">
+      <div id="agent-ide-lock-banner" class="hidden" role="status" aria-live="polite">
+        <span class="agent-ide-lock-dot" aria-hidden="true"></span>
+        <span class="agent-ide-lock-text">AI 正在写入文件，请稍候…</span>
+      </div>
+      <div id="file-tabs"></div>
+      <div id="editors-container">
+        <div id="editor-welcome" class="editor-welcome">
+          <div id="welcome-return-bar" class="welcome-return-bar hidden">
+            <button type="button" id="welcome-resume-btn" class="welcome-resume-btn" aria-label="返回继续编辑">← 返回继续编辑</button>
+          </div>
+          <div id="welcome-overview" class="welcome-view">
+            <div class="welcome-hero">
+              <h1>欢迎使用 RA3 MOD IDE</h1>
+              <p class="welcome-tagline">面向《命令与征服：红色警戒 3》模组开发的集成环境 — 集中编辑 XML、预览资源、调用 SDK 编译，并用自然语言与 AI 协作完成 MOD 制作。</p>
+              <div id="welcome-project-box" class="welcome-project hidden">
+                <span>当前项目</span>
+                <strong id="welcome-project-name"></strong>
+              </div>
+            </div>
+            <div class="welcome-intro">
+              <p>本 IDE 面向《红色警戒 3》MOD 制作全流程：在左侧<strong>文件树</strong>编辑 XML、预览 TGA/DDS/W3X/CSF，用 <kbd>Ctrl+B</kbd> 调用 SDK 后台编译，通过状态栏 <kbd>AI</kbd> 扫描项目、创建单位、修复 BAE 报错。内置 <strong>knowledge-docs</strong> 教程库与混合检索，减少翻论坛找标签的时间。</p>
+              <p>近期能力包括：<strong>文件名模糊搜索</strong>、<strong>AI 写入时界面锁定</strong>、<strong>项目定时完整备份与菜单恢复</strong>、路径沙箱防越界改文件、T1 权限下只读工具免确认、会话按项目记忆打开的标签与 AI 对话等。下方<strong>每张功能卡片均可点开阅读完整说明</strong>（含操作步骤、快捷键与注意事项）。</p>
+              <p>首次使用：菜单 <strong>文件 → 打开项目</strong> 或项目管理器选择 MOD；在「设置 → 首选项」配置 <strong>RA3 MOD SDK</strong> 路径与（可选）<strong>AI API Key</strong>。菜单 <strong>帮助 → 关于 RA3 IDE</strong> 可随时回到本页。</p>
+            </div>
+            <div class="welcome-section-title">功能一览 <span class="welcome-section-hint">点击卡片查看详情</span></div>
+            <div id="welcome-features-grid" class="welcome-features"></div>
+            <div class="welcome-footer">
+              文件树搜文件 · <kbd>Ctrl+S</kbd> 保存 · <kbd>Ctrl+B</kbd> 编译 · 状态栏 <kbd>AI</kbd> 助手 · 文件菜单可<strong>从备份恢复</strong>
+            </div>
+          </div>
+          <div id="welcome-detail" class="welcome-view welcome-detail-view hidden">
+            <button type="button" id="welcome-back-btn" class="welcome-back-btn" aria-label="返回功能一览">← 返回功能一览</button>
+            <header class="welcome-detail-header">
+              <h1 id="welcome-detail-title" class="welcome-detail-title"></h1>
+            </header>
+            <article id="welcome-detail-body" class="welcome-detail-body"></article>
+          </div>
+        </div>
+        <div id="media-preview" class="media-preview-panel" style="display:none;"></div>
+        <div id="editor"></div>
+        <div id="split-resizer"></div>
+        <div id="split-container"></div>
+      </div>
+    </div>
+    <div class="resizer" data-resizer="right">
+      <span id="properties-toggle" title="展开/收起属性">▶</span>
+    </div>
+    <div id="right-panel">
+      <div class="panel-chrome">
+        <span class="panel-chrome-title">属性</span>
+        <button type="button" class="panel-close-btn" id="properties-close-btn" title="收起属性面板"><span aria-hidden="true">×</span></button>
+      </div>
+      <div id="right-panel-body">
+        <div id="file-info"></div>
+        <div id="tga-preview" style="display:none;"></div>
+        <div id="w3x-info" style="display:none;"></div>
+        <div id="csf-editor" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+  <div id="status-bar">
+    <span id="status-cursor">行 1, 列 1</span>
+    <span id="status-lines">总行: 0</span>
+    <span id="status-wrap">自动换行: 关</span>
+    <span id="status-theme">主题: Dark</span>
+    <span id="status-spell">拼写检查: 关</span>
+    <span id="status-autosave">自动保存: 关</span>
+    <button id="status-ai-btn" onclick="toggleAIPanel()" title="AI 助手">AI</button>
+  </div>
+  <div id="output-resizer"></div>
+  <div id="output-panel">
+    <div id="output-header">
+      <div id="output-tabs">
+        <button type="button" class="output-tab active" data-tab="build">BuildLog</button>
+        <button type="button" class="output-tab" data-tab="warning">WarningLog</button>
+        <button type="button" class="output-tab" data-tab="error">ErrorLog</button>
+      </div>
+      <div class="output-header-actions">
+        <button type="button" class="panel-header-btn" id="output-clear-btn" title="清空日志">清空</button>
+        <button type="button" class="panel-close-btn" id="output-close-btn" title="收起输出面板"><span aria-hidden="true">×</span></button>
+      </div>
+    </div>
+    <div id="output-body">
+      <div id="output-content-build" class="output-tab-pane active"></div>
+      <div id="output-content-warning" class="output-tab-pane"></div>
+      <div id="output-content-error" class="output-tab-pane"></div>
+    </div>
+  </div>
+  <!-- AI 对话面板 -->
+  <div id="ai-panel">
+    <div id="ai-panel-header">
+      <div class="ai-header-left">
+        <div class="ai-logo">🤖</div>
+        <div>
+          <div class="ai-header-title">AI 助手 · 按项目保存会话</div>
+          <div id="ai-xml-mode-badge" class="ai-xml-mode-badge">写入：标准 MOD 格式</div>
+          <div class="ai-header-subtitle" style="display:none"></div>
+        </div>
+      </div>
+      <div class="ai-header-actions">
+        <button class="ai-action-btn" onclick="clearCurrentSession()" title="清空当前会话">🗑</button>
+        <button class="ai-action-btn" onclick="toggleAIPanel()" title="关闭">✕</button>
+      </div>
+    </div>
+    <div id="ai-session-tabs"></div>
+    <div id="ai-panel-messages">
+      <div id="ai-empty-state" class="ai-empty-state">
+        <div class="ai-empty-icon">🧬</div>
+        <div class="ai-empty-title">用自然语言操作 MOD</div>
+        <div class="ai-empty-desc">每个会话有独立记忆，切换 Tab 继续之前的讨论</div>
+        <div class="ai-empty-hints">
+          <div class="ai-hint-chip" onclick="fillHint('查看项目中所有单位')">查看所有单位</div>
+          <div class="ai-hint-chip" onclick="fillHint('如何修改天启坦克血量')">修改单位属性</div>
+          <div class="ai-hint-chip" onclick="fillHint('扫描当前项目全部文件，理解项目结构和XML引用规范')">扫描整个 MOD</div>
+          <div class="ai-hint-chip" onclick="fillHint('按标准MOD格式编写XML')">标准 MOD 格式</div>
+          <div class="ai-hint-chip" onclick="fillHintAndMaybeLearnProject('按当前项目已有结构编写XML')">当前项目格式</div>
+        </div>
+      </div>
+      <div id="ai-typing-indicator" class="ai-message agent" style="display:none">
+        <div class="ai-msg-avatar">🤖</div>
+        <div class="ai-msg-content"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+      </div>
+    </div>
+    <div id="ai-panel-input-area" class="ai-panel-compose">
+      <div class="ai-compose-toolbar">
+        <div class="ai-compose-tools">
+          <button type="button" class="ai-chip-btn" onclick="openKnowledgePanel()" title="打开知识库">📚 知识库</button>
+          <label class="ai-toggle-pill" title="展示推理过程">
+            <input type="checkbox" id="deep-thinking-toggle" checked>
+            <span>深度思考</span>
+          </label>
+          <label class="ai-toggle-pill" title="回答时联网检索">
+            <input type="checkbox" id="search-toggle" checked>
+            <span>联网搜索</span>
+          </label>
+          <button type="button" class="ai-chip-btn ai-chip-btn--accent" id="force-search-btn" title="本轮强制检索知识库">🔍 强制搜索</button>
+        </div>
+        <span class="ai-compose-hint">Enter 发送 · Shift+Enter 换行</span>
+      </div>
+      <div class="ai-input-wrapper">
+        <textarea id="ai-panel-input" rows="1" placeholder="描述 MOD 操作…"></textarea>
+        <button type="button" id="ai-panel-send" onclick="sendAIMessage()" title="Enter 发送">➤</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  </div>
+
+  <script src="scripts/app-theme.js"></script>
+  <script src="scripts/faction-theme.js"></script>
+  <script src="scripts/boot-splash.js"></script>
+  <script src="scripts/ide-wallpaper.js"></script>
+  <script src="scripts/app-menu-bar.js"></script>
+  <script src="scripts/globals.js"></script>
+  <script src="scripts/welcome-features-data.js"></script>
+  <script src="scripts/editor-welcome.js"></script>
+  <script src="scripts/agent-ide-lock.js"></script>
+  <script src="scripts/utils.js"></script>
+  <script src="scripts/editor-core.js"></script>
+  <script src="scripts/bookmarks.js"></script>
+  <script src="scripts/split-view.js"></script>
+  <script src="scripts/diff.js"></script>
+  <script src="scripts/tabs.js"></script>
+  <script src="scripts/session.js"></script>
+  <script src="scripts/file-tree.js"></script>
+  <script src="scripts/file-tree-search.js"></script>
+  <script src="scripts/panel-layout.js"></script>
+  <script src="scripts/output-panel.js"></script>
+  <script src="scripts/properties-panel.js"></script>
+  <script src="scripts/media-types.js"></script>
+  <script src="scripts/dds-decoder.js"></script>
+  <script src="scripts/w3x-info.js"></script>
+  <script src="scripts/tga-viewer.js"></script>
+  <script src="scripts/csf-editor.js"></script>
+  <script src="scripts/media-preview.js"></script>
+  <script src="scripts/agent-sessions.js"></script>
+  <script src="scripts/user-avatar.js"></script>
+  <script src="scripts/agent-ui/01-state.js"></script>
+  <script src="scripts/agent-ui/02-panel.js"></script>
+  <script src="scripts/agent-ui/03-messages.js"></script>
+  <script src="scripts/agent-ui/04-bars.js"></script>
+  <script src="scripts/agent-ui/05-stream.js"></script>
+  <script src="scripts/agent-ui/06-init.js"></script>
+  <script>
+    if (window.api) {
+      window.api.onSetProjectPath(async (projectPath) => {
+        currentRootFolder = projectPath;
+        if (projectPath) {
+          const name = projectPath.split(/[\\\/]/).pop();
+          document.getElementById('project-name').textContent = '📁 ' + name;
+          await loadFolder(projectPath);
+          if (typeof restoreProjectSession === 'function') await restoreProjectSession();
+          if (typeof updateEditorWelcomeProject === 'function') updateEditorWelcomeProject();
+          if (typeof AgentSessions !== 'undefined') AgentSessions.loadForProject(projectPath);
+        } else if (typeof AgentSessions !== 'undefined') {
+          AgentSessions.loadForProject(null);
+        }
+      });
+
+      window.api.onBeforeSwitchProject(async (newPath) => {
+        await saveSessionForSwitch();
+        window.api.sendSwitchingReady(newPath);
+      });
+    }
+
+    function updateStatusBar() {
+      if (window.currentPreviewMode && currentFile) {
+        document.getElementById('status-cursor').textContent = `预览: ${window.currentPreviewMode}`;
+        document.getElementById('status-lines').textContent = currentFile.split(/[\\/]/).pop() || '';
+        const themeId =
+          typeof AppTheme !== 'undefined' ? AppTheme.getCurrentThemeId() : 'vs-dark';
+        const name =
+          typeof AppTheme !== 'undefined' ? AppTheme.getThemeDisplayName(themeId) : 'Dark';
+        document.getElementById('status-theme').textContent = `主题: ${name}`;
+        document.getElementById('status-spell').textContent =
+          window.currentPreviewMode === 'csf' ? 'CSF 可编辑' : '只读预览';
+        document.getElementById('status-autosave').textContent =
+          `自动保存: ${autoSaveIntervalSeconds > 0 ? autoSaveIntervalSeconds + 's' : '关'}`;
+        document.getElementById('status-wrap').textContent = '自动换行: —';
+        return;
+      }
+      if (!editor) return;
+      const pos = editor.getPosition();
+      const model = editor.getModel();
+      if (pos && model) {
+        document.getElementById('status-cursor').textContent = `行 ${pos.lineNumber}, 列 ${pos.column}`;
+        document.getElementById('status-lines').textContent = `总行: ${model.getLineCount()}`;
+      }
+      document.getElementById('status-wrap').textContent =
+        `自动换行: ${editor.getOption(monaco.editor.EditorOption.wordWrap) === 'on' ? '开' : '关'}`;
+      const themeId =
+        typeof AppTheme !== 'undefined' ? AppTheme.getCurrentThemeId() : 'vs-dark';
+      const name =
+        typeof AppTheme !== 'undefined' ? AppTheme.getThemeDisplayName(themeId) : 'Dark';
+      document.getElementById('status-theme').textContent = `主题: ${name}`;
+      document.getElementById('status-spell').textContent = `拼写检查: ${spellcheckEnabled ? '开' : '关'}`;
+      document.getElementById('status-autosave').textContent =
+        `自动保存: ${autoSaveIntervalSeconds > 0 ? autoSaveIntervalSeconds + 's' : '关'}`;
+    }
+
+    async function performSpellCheck() {
+      if (!spellcheckEnabled || !editor) return;
+      const model = editor.getModel();
+      if (!model) return;
+      const text = model.getValue();
+      const errors = await window.api.checkSpelling(text);
+      const newDecos = [];
+      errors.forEach(err => {
+        const sp = model.getPositionAt(err.start);
+        const ep = model.getPositionAt(err.end);
+        newDecos.push({
+          range: new monaco.Range(sp.lineNumber, sp.column, ep.lineNumber, ep.column),
+          options: { className: 'spell-error-wave' }
+        });
+      });
+      spellDecorations = editor.deltaDecorations(spellDecorations, newDecos);
+    }
+
+    function showTabContextMenu(e, filePath) {
+      e.preventDefault(); e.stopPropagation();
+      const exist = document.querySelector('.context-menu'); if (exist) exist.remove();
+      const menu = document.createElement('div'); menu.className = 'context-menu';
+      menu.style.left = e.clientX + 'px'; menu.style.top = e.clientY + 'px';
+      const cleanup = () => { if (menu) menu.remove(); };
+      const items = [
+        { label: '关闭', action: () => { closeFile(filePath); cleanup(); } },
+        { label: '关闭其他', action: () => { openFiles = openFiles.filter(fp => fp === filePath); if (!openFiles.includes(currentFile)) { if (openFiles.length > 0) switchToFile(openFiles[openFiles.length-1]); else if (typeof closeEditorToWelcome === 'function') closeEditorToWelcome(); else { currentFile = null; editor.setValue(''); } } renderTabs(); cleanup(); } },
+        { label: '关闭右侧', action: () => { const idx = openFiles.indexOf(filePath); if (idx >= 0) openFiles = openFiles.slice(0, idx+1); if (!openFiles.includes(currentFile)) { if (openFiles.length > 0) switchToFile(openFiles[openFiles.length-1]); else if (typeof closeEditorToWelcome === 'function') closeEditorToWelcome(); else { currentFile = null; editor.setValue(''); } } renderTabs(); cleanup(); } },
+        { label: '关闭所有', action: () => { openFiles = []; if (typeof closeEditorToWelcome === 'function') closeEditorToWelcome(); else { currentFile = null; editor.setValue(''); } renderTabs(); cleanup(); } }
+      ];
+      items.forEach(it => { const div = document.createElement('div'); div.className = 'context-menu-item'; div.textContent = it.label; div.onclick = () => { it.action(); }; menu.appendChild(div); });
+      document.body.appendChild(menu);
+      const close = (ev) => { if (!menu.contains(ev.target)) { cleanup(); document.removeEventListener('click', close); } };
+      setTimeout(() => document.addEventListener('click', close), 0);
+    }
+
+    if (window.api) {
+      window.api.onMenuSave(() => saveCurrentFile());
+      window.api.onMenuSaveAll(() => saveAllFiles());
+      window.api.onMenuFind(() => editor.getAction('actions.find').run());
+      window.api.onMenuFindReplace(() => editor.getAction('editor.action.startFindReplaceAction').run());
+      window.api.onMenuDuplicateLine(() => editor.getAction('duplicate-line').run());
+      window.api.onMenuDeleteLine(() => editor.getAction('delete-line').run());
+      window.api.onMenuMoveLineUp(() => editor.getAction('move-line-up').run());
+      window.api.onMenuMoveLineDown(() => editor.getAction('move-line-down').run());
+      window.api.onMenuToggleWhitespace((checked) => editor.updateOptions({ renderWhitespace: checked ? 'all' : 'none' }));
+      window.api.onMenuToggleWordwrap((checked) => { editor.updateOptions({ wordWrap: checked ? 'on' : 'off' }); updateStatusBar(); });
+      window.api.onMenuSetTheme(async (theme) => {
+        if (typeof AppTheme !== 'undefined') AppTheme.applyAppTheme(theme);
+        try {
+          const prefs = await window.api.getPreferences();
+          const next = { ...prefs, theme };
+          if (
+            prefs.aiPersonalityMode === 'sync' &&
+            typeof FactionTheme !== 'undefined' &&
+            FactionTheme.isFactionTheme(theme)
+          ) {
+            next.aiPersonality = FactionTheme.getFaction(theme).personality;
+          }
+          await window.api.savePreferences(next);
+          if (typeof AppTheme !== 'undefined' && FactionTheme.isFactionTheme(theme)) {
+            AppTheme.applyAppTheme(theme, { checkPersonality: true });
+          }
+        } catch (e) {}
+      });
+      window.api.onMenuCustomTheme(() => showCustomThemeDialog());
+      window.api.onMenuAutoSaveSettings(() => showAutoSaveSettings());
+      window.api.onMenuToggleSpellcheck((checked) => { spellcheckEnabled = checked; if (!checked) { spellDecorations = editor.deltaDecorations(spellDecorations, []); } else { performSpellCheck(); } updateStatusBar(); });
+      window.api.onMenuSplitEditor(() => openSplitView());
+      window.api.onMenuCloseSplit(() => closeSplitView());
+      window.api.onMenuShowWelcome?.(() => {
+        if (typeof openWelcomeFromAbout === 'function') openWelcomeFromAbout();
+      });
+      window.api.onProjectBackupStarted?.(() => {
+        if (typeof showToast === 'function') showToast('正在备份当前项目…');
+      });
+      window.api.onProjectBackupDone?.((data) => {
+        if (!data) return;
+        if (data.success && typeof showToast === 'function') {
+          showToast('项目备份完成：' + (data.folderName || ''));
+        } else if (!data.success && data.error && typeof showToast === 'function') {
+          showToast('项目备份失败：' + data.error);
+        }
+      });
+      window.api.onProjectRestoredFromBackup?.((data) => {
+        if (typeof fileContents !== 'undefined') fileContents.clear();
+        if (typeof dirtyFiles !== 'undefined') dirtyFiles.clear();
+        if (typeof openFiles !== 'undefined') openFiles.length = 0;
+        currentFile = null;
+        window.currentPreviewMode = null;
+        if (typeof MediaPreview !== 'undefined') MediaPreview.hide();
+        const treeRefresh =
+          typeof refreshFileTreePreservingExpand === 'function'
+            ? refreshFileTreePreservingExpand()
+            : typeof refreshFileTree === 'function'
+              ? refreshFileTree()
+              : Promise.resolve();
+        Promise.resolve(treeRefresh).then(() => {
+          if (typeof notifyProjectFileIndexChanged === 'function') {
+            return notifyProjectFileIndexChanged();
+          }
+        });
+        if (typeof closeEditorToWelcome === 'function') closeEditorToWelcome();
+        else if (typeof showEditorWelcome === 'function') showEditorWelcome();
+        if (typeof showToast === 'function') {
+          showToast('已从备份恢复：' + (data?.backupName || ''));
+        }
+      });
+      if (typeof AppTheme !== 'undefined') AppTheme.wirePreferencesListener();
+      window.api.onBeforeClose(async () => {
+        const unsaved = [];
+        for (const [fp, dirty] of dirtyFiles.entries()) if (dirty) unsaved.push(fp);
+        if (unsaved.length === 0) {
+          await saveSessionAndClose('discard');
+          return;
+        }
+        const choice = await window.api.showUnsavedDialog(unsaved);
+        if (choice === 'cancel') {
+          if (window.api.cancelClose) window.api.cancelClose();
+          return;
+        }
+        await saveSessionAndClose(choice);
+      });
+    }
+
+    function initResizers() {
+      const resizers = document.querySelectorAll('.resizer'); let currentResizer = null, startX = 0, startWidth = 0, targetPanel = null;
+      function onMouseDown(e) {
+        if (e.target.tagName === 'SPAN') return;
+        currentResizer = e.target.closest?.('.resizer') || e.target;
+        if (!currentResizer?.dataset?.resizer) return;
+        if (currentResizer.dataset.resizer === 'left') {
+          targetPanel = document.getElementById('sidebar');
+          if (!targetPanel || targetPanel.style.display === 'none') return;
+        } else if (currentResizer.dataset.resizer === 'right') {
+          targetPanel = document.getElementById('right-panel');
+          if (!targetPanel || targetPanel.style.display === 'none') return;
+        } else return;
+        startX = e.clientX;
+        startWidth = parseInt(getComputedStyle(targetPanel).width, 10);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        currentResizer.style.background = 'var(--app-resizer-hover)';
+      }
+      function onMouseMove(e) { if (!currentResizer || !targetPanel) return; const dx = e.clientX - startX; let newWidth = currentResizer.dataset.resizer === 'left' ? startWidth + dx : startWidth - dx; newWidth = Math.max(parseInt(targetPanel.style.minWidth || 150), Math.min(newWidth, parseInt(targetPanel.style.maxWidth || 500))); targetPanel.style.width = newWidth + 'px'; }
+      function onMouseUp() { currentResizer.style.background = ''; document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); currentResizer = null; targetPanel = null; if (editor) editor.layout(); if (splitEditor) splitEditor.layout(); }
+      resizers.forEach(r => r.addEventListener('mousedown', onMouseDown));
+    }
+
+    let projectFolderLoadDone = false;
+    async function attemptLoadProjectFolder() {
+      if (projectFolderLoadDone) return;
+      try {
+        const projectPath = await window.api.getProjectPath();
+        if (!projectPath) return;
+        projectFolderLoadDone = true;
+        currentRootFolder = projectPath;
+        document.getElementById('project-name').textContent = '📁 ' + projectPath.split(/[\\\/]/).pop();
+        await loadFolder(projectPath);
+        if (typeof restoreProjectSession === 'function') await restoreProjectSession();
+        if (typeof AgentSessions !== 'undefined') AgentSessions.loadForProject(projectPath);
+      } catch (err) {
+        console.warn('[welcome] load project:', err);
+        projectFolderLoadDone = false;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      let themeId = 'vs-dark';
+      try {
+        if (typeof AppTheme !== 'undefined') {
+          await AppTheme.initAppThemeFromPreferences();
+          themeId = AppTheme.getCurrentThemeId() || themeId;
+        } else if (window.api?.getPreferences) {
+          const prefs = await window.api.getPreferences();
+          themeId = prefs?.theme || themeId;
+        }
+      } catch (e) {
+        console.warn('[ide-boot]', e.message);
+      }
+      try {
+        if (typeof IdeWallpaper !== 'undefined') {
+          await IdeWallpaper.runBootIntro(themeId);
+        } else if (typeof BootSplash !== 'undefined') {
+          const splash = BootSplash.create({
+            mount: document.getElementById('ide-boot-mount') || document.body,
+            label: '项目加载中',
+            status: '正在启动…',
+          });
+          splash.setProgress(40, '正在加载…');
+          await splash.dismiss(400);
+          document.getElementById('ide-app-shell')?.classList.add('is-boot-revealed');
+        } else {
+          document.getElementById('ide-app-shell')?.classList.add('is-boot-revealed');
+        }
+      } catch (e) {
+        console.warn('[ide-boot]', e.message);
+        document.getElementById('ide-app-shell')?.classList.add('is-boot-revealed');
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.PanelLayout) window.PanelLayout.initPanelLayout();
+      if (typeof initFileTreeSearch === 'function') initFileTreeSearch();
+    });
+
+    window.addEventListener('load', () => {
+      if (window.PanelLayout) window.PanelLayout.initPanelLayout();
+      initResizers();
+      initOutputPanel();
+      if (window.api && window.api.sendRendererReady) {
+        window.api.sendRendererReady();
+      }
+      attemptLoadProjectFolder();
+    });
+  </script>
+</body>
+</html>

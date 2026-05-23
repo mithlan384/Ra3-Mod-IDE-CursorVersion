@@ -1,0 +1,295 @@
+/* 全局界面主题（与 Monaco 主题 ID 对应：vs-dark / vs / hc-black） */
+
+:root,
+:root[data-app-theme="vs-dark"] {
+  --app-bg: #121212;
+  --app-surface: rgba(30, 30, 30, 0.78);
+  --app-surface-solid: #1e1e1e;
+  --app-surface-elevated: #2d2d2d;
+  --app-surface-input: #3c3c3c;
+  --app-text: #cccccc;
+  --app-text-muted: #aaaaaa;
+  --app-text-dim: #888888;
+  --app-text-strong: #ffffff;
+  --app-border: rgba(255, 255, 255, 0.1);
+  --app-border-subtle: rgba(255, 255, 255, 0.08);
+  --app-border-solid: #3c3c3c;
+  --app-hover: rgba(255, 255, 255, 0.08);
+  --app-active: rgba(9, 71, 113, 0.6);
+  --app-accent: rgba(14, 99, 156, 0.85);
+  --app-accent-hover: rgba(17, 119, 187, 0.92);
+  --app-accent-solid: #0e639c;
+  --app-highlight: rgba(14, 99, 156, 0.7);
+  --app-editor-bg: #1e1e1e;
+  --app-resizer: rgba(255, 255, 255, 0.06);
+  --app-resizer-hover: rgba(14, 99, 156, 0.5);
+  --app-shadow: rgba(0, 0, 0, 0.45);
+  --app-menu-bg: #2d2d2d;
+  --app-error: #f44747;
+  --app-ai-bg: linear-gradient(180deg, #1a1b26 0%, #16171f 100%);
+  --app-ai-header: linear-gradient(135deg, #0d47a1 0%, #0e639c 50%, #1177bb 100%);
+  --app-ai-bar: #13141a;
+  --app-ai-bubble: rgba(255, 255, 255, 0.055);
+  --app-ai-input: rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+
+:root[data-app-theme="vs"] {
+  --app-bg: #e8e8e8;
+  --app-surface: rgba(255, 255, 255, 0.94);
+  --app-surface-solid: #ffffff;
+  --app-surface-elevated: #f5f5f5;
+  --app-surface-input: #ffffff;
+  --app-text: #333333;
+  --app-text-muted: #555555;
+  --app-text-dim: #777777;
+  --app-text-strong: #1a1a1a;
+  --app-border: rgba(0, 0, 0, 0.12);
+  --app-border-subtle: rgba(0, 0, 0, 0.08);
+  --app-border-solid: #cccccc;
+  --app-hover: rgba(0, 0, 0, 0.06);
+  --app-active: rgba(0, 120, 212, 0.18);
+  --app-accent: #0078d4;
+  --app-accent-hover: #106ebe;
+  --app-accent-solid: #0078d4;
+  --app-highlight: rgba(0, 120, 212, 0.22);
+  --app-editor-bg: #ffffff;
+  --app-resizer: rgba(0, 0, 0, 0.08);
+  --app-resizer-hover: rgba(0, 120, 212, 0.35);
+  --app-shadow: rgba(0, 0, 0, 0.15);
+  --app-menu-bg: #ffffff;
+  --app-error: #c42b1c;
+  --app-ai-bg: linear-gradient(180deg, #f0f4f8 0%, #e8eef4 100%);
+  --app-ai-header: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+  --app-ai-bar: #f5f7fa;
+  --app-ai-bubble: rgba(0, 0, 0, 0.05);
+  --app-ai-input: rgba(0, 0, 0, 0.04);
+  color-scheme: light;
+}
+
+:root[data-app-theme="hc-black"] {
+  --app-bg: #000000;
+  --app-surface: #0a0a0a;
+  --app-surface-solid: #000000;
+  --app-surface-elevated: #1a1a1a;
+  --app-surface-input: #000000;
+  --app-text: #ffffff;
+  --app-text-muted: #e0e0e0;
+  --app-text-dim: #c0c0c0;
+  --app-text-strong: #ffffff;
+  --app-border: #ffffff;
+  --app-border-subtle: #cccccc;
+  --app-border-solid: #ffffff;
+  --app-hover: #1a1a1a;
+  --app-active: #ffff00;
+  --app-accent: #ffff00;
+  --app-accent-hover: #ffff99;
+  --app-accent-solid: #ffff00;
+  --app-highlight: #ffff00;
+  --app-editor-bg: #000000;
+  --app-resizer: #ffffff;
+  --app-resizer-hover: #ffff00;
+  --app-shadow: rgba(255, 255, 255, 0.2);
+  --app-menu-bg: #000000;
+  --app-error: #ff5555;
+  --app-ai-bg: #000000;
+  --app-ai-header: #ffff00;
+  --app-ai-header-fg: #000000;
+  --app-ai-bar: #000000;
+  --app-ai-bubble: #1a1a1a;
+  --app-ai-input: #0a0a0a;
+  --app-on-accent: #000000;
+  color-scheme: dark;
+}
+
+/* 黄底控件用深色字；勿全局 button { color:#000 }，否则深色按钮会看不见 */
+:root[data-app-theme="hc-black"] .tab.active,
+:root[data-app-theme="hc-black"] button#ai-panel-send,
+:root[data-app-theme="hc-black"] .ai-message.user .ai-msg-content {
+  color: var(--app-on-accent);
+}
+
+:root[data-app-theme="hc-black"] #ai-panel-header {
+  background: var(--app-ai-header);
+  color: var(--app-ai-header-fg, #000000);
+  border-bottom: 2px solid #ffffff;
+}
+:root[data-app-theme="hc-black"] #ai-panel-header .ai-header-title,
+:root[data-app-theme="hc-black"] #ai-panel-header .ai-header-subtitle,
+:root[data-app-theme="hc-black"] #ai-panel-header .ai-action-btn {
+  color: #000000;
+  opacity: 1;
+}
+:root[data-app-theme="hc-black"] #ai-panel,
+:root[data-app-theme="hc-black"] #right-panel {
+  border-color: #ffffff;
+}
+:root[data-app-theme="hc-black"] .ai-session-tab {
+  color: #ffffff;
+}
+:root[data-app-theme="hc-black"] .ai-session-tab.active {
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+  border-color: #ffffff;
+}
+:root[data-app-theme="hc-black"] .ai-toolbar-btn,
+:root[data-app-theme="hc-black"] #ai-panel-input-area label,
+:root[data-app-theme="hc-black"] .ai-quick-btn,
+:root[data-app-theme="hc-black"] .ai-chip-btn,
+:root[data-app-theme="hc-black"] .ai-compose-hint {
+  color: var(--app-text);
+}
+:root[data-app-theme="hc-black"] .ai-chip-btn {
+  background: var(--app-hover);
+  border-color: var(--app-border-solid);
+}
+:root[data-app-theme="hc-black"] .ai-chip-btn:hover {
+  background: var(--app-surface-elevated);
+  color: var(--app-text-strong);
+}
+:root[data-app-theme="hc-black"] .ai-chip-btn.ai-chip-btn--accent,
+:root[data-app-theme="hc-black"] .ai-chip-btn.ai-chip-btn--accent:hover {
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+  border-color: var(--app-border-solid);
+}
+:root[data-app-theme="hc-black"] .ai-toggle-pill span {
+  color: var(--app-text);
+  border-color: var(--app-border-solid);
+}
+:root[data-app-theme="hc-black"] .ai-toggle-pill input:checked + span {
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+  border-color: var(--app-border-solid);
+}
+:root[data-app-theme="hc-black"] #ai-panel-send {
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+  border: 1px solid var(--app-border-solid);
+}
+:root[data-app-theme="hc-black"] .ai-hint-chip {
+  color: var(--app-text);
+  border-color: var(--app-border-solid);
+}
+:root[data-app-theme="hc-black"] .ai-hint-chip:hover {
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+}
+:root[data-app-theme="hc-black"] #status-ai-btn {
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+:root[data-app-theme="hc-black"] #status-ai-btn:hover,
+:root[data-app-theme="hc-black"] #status-ai-btn.active {
+  color: var(--app-on-accent);
+  background: var(--app-accent);
+  border-color: #ffffff;
+}
+:root[data-app-theme="hc-black"] #status-bar {
+  color: #ffffff;
+  border-top: 1px solid #ffffff;
+}
+:root[data-app-theme="hc-black"] .ai-message.agent .ai-msg-content {
+  background: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+:root[data-app-theme="hc-black"] .ai-empty-desc,
+:root[data-app-theme="hc-black"] .ai-chip {
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+/* 主界面黄底按钮（main.css 默认 button） */
+:root[data-app-theme="hc-black"] button:not(.ai-chip-btn):not(.prefs-tab-btn):not(.app-btn):not(.panel-close-btn):not(.panel-header-btn):not(.csf-page-btn):not(.csf-action-btn):not(.csf-del-btn):not(.csf-category-tab) {
+  color: var(--app-on-accent);
+  border: 1px solid var(--app-border-solid);
+}
+
+:root[data-app-theme="hc-black"] .panel-close-btn,
+:root[data-app-theme="hc-black"] .panel-header-btn {
+  color: var(--app-text) !important;
+  background: transparent !important;
+}
+
+:root[data-app-theme="hc-black"] #media-csf-root .csf-page-btn,
+:root[data-app-theme="hc-black"] #media-csf-root .csf-action-btn:not(.csf-action-btn--primary),
+:root[data-app-theme="hc-black"] #media-csf-root .csf-del-btn {
+  color: var(--app-text) !important;
+  background: var(--app-hover) !important;
+  border-color: var(--app-border-solid) !important;
+}
+
+:root[data-app-theme="hc-black"] #media-csf-root .csf-action-btn--primary {
+  color: var(--app-on-accent) !important;
+  background: var(--app-accent) !important;
+  border-color: var(--app-border-solid) !important;
+}
+
+:root[data-app-theme="hc-black"] .csf-category-tab.active {
+  color: var(--app-on-accent);
+}
+
+/* 滚动条 —— 随主题（侧栏、欢迎页、输出、AI 面板等） */
+:root,
+:root[data-app-theme],
+:root[data-faction-theme] {
+  --scrollbar-track: var(--app-surface-solid);
+  --scrollbar-thumb: var(--app-accent-solid);
+  --scrollbar-thumb-hover: var(--app-accent-hover);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
+}
+
+/* 下拉框 / 输入框 —— 随主题 */
+select,
+textarea,
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="search"] {
+  background-color: var(--app-surface-solid);
+  color: var(--app-text);
+  border-color: var(--app-border-solid);
+}
+
+select option,
+select optgroup {
+  background-color: var(--app-surface-solid);
+  color: var(--app-text);
+}
+
+/* Monaco 容器背景与主题一致 */
+#editor,
+#split-container,
+.monaco-editor,
+.monaco-editor .margin,
+.monaco-editor-background {
+  background-color: var(--app-editor-bg) !important;
+}

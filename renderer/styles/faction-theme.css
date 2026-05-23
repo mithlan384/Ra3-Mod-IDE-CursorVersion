@@ -1,0 +1,268 @@
+/* 盟军 / 苏联 / 帝国 —— 渐变配色、固定壁纸、情报官头像 */
+
+/* ========== 盟军 ========== */
+:root[data-faction-theme="allied"] {
+  --app-bg: #0a1628;
+  --app-bg-gradient: linear-gradient(165deg, #0a1e3a 0%, #061428 40%, #0d2848 100%);
+  --app-surface: linear-gradient(145deg, rgba(18, 52, 96, 0.88) 0%, rgba(10, 32, 64, 0.82) 100%);
+  --app-surface-solid: #0f2744;
+  --app-surface-elevated: linear-gradient(180deg, #1a4570 0%, #153a5c 100%);
+  --app-surface-input: linear-gradient(180deg, #1e5080 0%, #1a4570 100%);
+  --app-text: #c8ddf5;
+  --app-text-muted: #8eb4d8;
+  --app-text-dim: #6a94b8;
+  --app-text-strong: #e8f4ff;
+  --app-border: rgba(80, 160, 255, 0.22);
+  --app-border-subtle: rgba(60, 140, 230, 0.12);
+  --app-border-solid: #2a5a8a;
+  --app-hover: rgba(60, 140, 255, 0.14);
+  --app-active: rgba(30, 100, 200, 0.45);
+  --app-accent: rgba(46, 130, 220, 0.9);
+  --app-accent-hover: rgba(70, 160, 255, 0.95);
+  --app-accent-solid: #2e7be8;
+  --app-highlight: rgba(46, 130, 220, 0.55);
+  --app-editor-bg: rgba(8, 20, 40, 0.9);
+  --app-resizer-hover: rgba(46, 130, 220, 0.5);
+  --app-shadow: rgba(0, 20, 60, 0.55);
+  --app-menu-bg: #0f2744;
+  --app-ai-bg: linear-gradient(180deg, rgba(10, 36, 72, 0.96) 0%, rgba(6, 18, 38, 0.98) 100%);
+  --app-ai-header: linear-gradient(125deg, #062854 0%, #0d3d7a 35%, #1a5fad 65%, #3a9ae8 100%);
+  --app-ai-bar: linear-gradient(90deg, #081830 0%, #0a2040 100%);
+  --app-ai-bubble: rgba(46, 130, 220, 0.14);
+  --app-ai-input: rgba(46, 130, 220, 0.1);
+  --faction-accent-glow: rgba(80, 180, 255, 0.35);
+  --chrome-bar-bg: linear-gradient(90deg, #0a2040 0%, #143060 50%, #0a2040 100%);
+  color-scheme: dark;
+}
+
+/* ========== 苏联 ========== */
+:root[data-faction-theme="soviet"] {
+  --app-bg: #3a1418;
+  --app-bg-gradient: linear-gradient(165deg, #5a2228 0%, #3a161c 42%, #4a1c22 100%);
+  --app-surface: linear-gradient(145deg, rgba(108, 32, 36, 0.82) 0%, rgba(72, 22, 28, 0.78) 100%);
+  --app-surface-solid: #4a1c22;
+  --app-surface-elevated: linear-gradient(180deg, #6e2830 0%, #5a2228 100%);
+  --app-surface-input: linear-gradient(180deg, #7a3038 0%, #662830 100%);
+  --app-text: #fce8e8;
+  --app-text-muted: #e0a8a8;
+  --app-text-dim: #c08080;
+  --app-text-strong: #fff5f5;
+  --app-border: rgba(240, 90, 90, 0.32);
+  --app-border-subtle: rgba(220, 70, 70, 0.2);
+  --app-border-solid: #8a3038;
+  --app-hover: rgba(230, 70, 70, 0.2);
+  --app-active: rgba(200, 45, 55, 0.48);
+  --app-accent: rgba(220, 55, 55, 0.92);
+  --app-accent-hover: rgba(245, 85, 85, 0.96);
+  --app-accent-solid: #d83838;
+  --app-highlight: rgba(220, 60, 60, 0.52);
+  --app-editor-bg: rgba(52, 18, 22, 0.88);
+  --app-resizer-hover: rgba(220, 55, 55, 0.5);
+  --app-shadow: rgba(60, 10, 14, 0.45);
+  --app-menu-bg: #4a1c22;
+  --app-ai-bg: linear-gradient(180deg, rgba(72, 24, 28, 0.94) 0%, rgba(48, 16, 20, 0.96) 100%);
+  --app-ai-header: linear-gradient(125deg, #6a2028 0%, #8b2830 38%, #b83840 68%, #e04848 100%);
+  --app-ai-bar: linear-gradient(90deg, #3a161c 0%, #4a1c22 100%);
+  --app-ai-bubble: rgba(230, 70, 70, 0.18);
+  --app-ai-input: rgba(220, 60, 60, 0.12);
+  --faction-accent-glow: rgba(255, 100, 80, 0.38);
+  --chrome-bar-bg: linear-gradient(90deg, #4a1c22 0%, #6a2830 50%, #4a1c22 100%);
+  color-scheme: dark;
+}
+
+/* ========== 帝国（橙色） ========== */
+:root[data-faction-theme="empire"] {
+  --app-bg: #2e1c10;
+  --app-bg-gradient: linear-gradient(165deg, #4a3018 0%, #322010 42%, #3a2814 100%);
+  --app-surface: linear-gradient(145deg, rgba(100, 58, 22, 0.82) 0%, rgba(68, 40, 14, 0.78) 100%);
+  --app-surface-solid: #3a2814;
+  --app-surface-elevated: linear-gradient(180deg, #6a4420 0%, #563818 100%);
+  --app-surface-input: linear-gradient(180deg, #7a5028 0%, #664420 100%);
+  --app-text: #fff0dc;
+  --app-text-muted: #e8c090;
+  --app-text-dim: #c8a068;
+  --app-text-strong: #fffaf0;
+  --app-border: rgba(245, 165, 55, 0.34);
+  --app-border-subtle: rgba(230, 140, 50, 0.2);
+  --app-border-solid: #8a6028;
+  --app-hover: rgba(245, 160, 50, 0.2);
+  --app-active: rgba(220, 120, 30, 0.48);
+  --app-accent: rgba(240, 145, 35, 0.94);
+  --app-accent-hover: rgba(255, 175, 60, 0.96);
+  --app-accent-solid: #f09028;
+  --app-highlight: rgba(240, 150, 40, 0.52);
+  --app-editor-bg: rgba(48, 30, 14, 0.88);
+  --app-resizer-hover: rgba(240, 145, 35, 0.5);
+  --app-shadow: rgba(50, 28, 8, 0.45);
+  --app-menu-bg: #3a2814;
+  --app-ai-bg: linear-gradient(180deg, rgba(68, 40, 16, 0.94) 0%, rgba(44, 26, 10, 0.96) 100%);
+  --app-ai-header: linear-gradient(125deg, #6a4010 0%, #9a5818 35%, #d07820 65%, #f0a030 100%);
+  --app-ai-bar: linear-gradient(90deg, #322010 0%, #3a2814 100%);
+  --app-ai-bubble: rgba(245, 160, 50, 0.18);
+  --app-ai-input: rgba(240, 145, 35, 0.12);
+  --faction-accent-glow: rgba(255, 180, 70, 0.4);
+  --chrome-bar-bg: linear-gradient(90deg, #3a2814 0%, #5a3818 50%, #3a2814 100%);
+  color-scheme: dark;
+}
+
+/* 全局渐变底 + 顶栏 */
+:root[data-faction-theme] body {
+  background: var(--app-bg-gradient), var(--app-bg);
+}
+html[data-pm-page] body.pm-page {
+  background: transparent !important;
+}
+:root[data-faction-theme] #status-bar {
+  background: var(--chrome-bar-bg);
+  border-top-color: var(--app-border);
+}
+:root[data-faction-theme] .panel-chrome {
+  background: var(--chrome-bar-bg);
+}
+:root[data-faction-theme] #sidebar {
+  background: var(--app-surface);
+}
+:root[data-faction-theme] #right-panel .panel-chrome,
+:root[data-faction-theme] #output-header {
+  background: var(--chrome-bar-bg);
+}
+
+/* 固定阵营壁纸 */
+:root[data-faction-theme] #main-area {
+  position: relative;
+  isolation: isolate;
+}
+#faction-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.22;
+  pointer-events: none;
+  transition: opacity 0.55s ease;
+}
+:root[data-faction-theme] #sidebar,
+:root[data-faction-theme] #editor-area,
+:root[data-faction-theme] #right-panel,
+:root[data-faction-theme] #output-panel {
+  position: relative;
+  z-index: 1;
+}
+:root[data-faction-theme] #sidebar {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+:root[data-faction-theme] #editor {
+  box-shadow: inset 0 0 80px var(--faction-accent-glow);
+}
+
+.faction-logo {
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  background-image: var(--faction-logo) !important;
+  background-repeat: no-repeat !important;
+  background-position: var(--faction-logo-pos, center) !important;
+  background-size: var(--faction-logo-size, 320%) !important;
+  border: 1px solid var(--app-border);
+  font-size: 0 !important;
+}
+
+.faction-avatar {
+  border-radius: 50% !important;
+  overflow: hidden;
+  background-color: var(--app-accent-solid) !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  background-size: cover !important;
+  border: 2px solid var(--app-accent-solid);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  font-size: 0 !important;
+}
+
+#ai-panel-header .ai-logo.faction-logo {
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.faction-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  margin: 0 auto 12px;
+  background-color: rgba(0, 0, 0, 0.2);
+  background-image: var(--faction-logo);
+  background-repeat: no-repeat;
+  background-position: var(--faction-logo-pos, center);
+  background-size: var(--faction-logo-size, 320%);
+  border: 1px solid var(--app-border);
+  font-size: 0 !important;
+}
+
+.ai-header-subtitle {
+  font-size: 11px;
+  opacity: 0.82;
+  margin-top: 2px;
+}
+
+/* 状态栏 AI：仅改色，保持「AI」文字 */
+#status-ai-btn[data-faction-accent="allied"] {
+  border-color: var(--app-accent-solid);
+  color: var(--app-text-strong);
+  background: linear-gradient(180deg, rgba(46, 130, 220, 0.35) 0%, rgba(20, 60, 120, 0.25) 100%);
+}
+#status-ai-btn[data-faction-accent="soviet"] {
+  border-color: var(--app-accent-solid);
+  color: var(--app-text-strong);
+  background: linear-gradient(180deg, rgba(220, 60, 60, 0.42) 0%, rgba(120, 32, 36, 0.32) 100%);
+}
+#status-ai-btn[data-faction-accent="empire"] {
+  border-color: var(--app-accent-solid);
+  color: var(--app-text-strong);
+  background: linear-gradient(180deg, rgba(245, 160, 50, 0.42) 0%, rgba(140, 88, 28, 0.32) 100%);
+}
+#status-ai-btn[data-faction-accent].active {
+  background: var(--app-accent);
+  box-shadow: 0 0 10px var(--faction-accent-glow);
+}
+
+.ai-personality-mismatch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--app-ai-input);
+  border: 1px solid var(--app-border);
+  font-size: 12px;
+  color: var(--app-text-muted);
+  line-height: 1.45;
+}
+.ai-mismatch-new,
+.ai-mismatch-dismiss {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--app-border);
+  background: var(--app-hover);
+  color: var(--app-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.ai-mismatch-new {
+  border-color: var(--app-accent-solid);
+  color: var(--app-accent-solid);
+}
+
+#editor-welcome.faction-welcome::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--welcome-faction-bg);
+  background-size: cover;
+  background-position: center top;
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 0;
+}

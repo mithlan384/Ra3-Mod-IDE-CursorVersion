@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>编译项目</title>
+  <link rel="stylesheet" href="styles/app-theme.css">
+  <link rel="stylesheet" href="styles/faction-theme.css">
+  <link rel="stylesheet" href="styles/standalone-window.css">
+  <script src="scripts/app-theme.js"></script>
+  <script src="scripts/faction-theme.js"></script>
+</head>
+<body class="standalone-window build-layout">
+  <h2>编译项目</h2>
+
+  <div class="standalone-section">
+    <label class="standalone-label" for="build-version">版本号</label>
+    <input class="standalone-field" type="text" id="build-version" placeholder="例：0.3.7a">
+  </div>
+
+  <div class="standalone-section">
+    <label class="standalone-label" for="skudef-name">Skudef 名称</label>
+    <input class="standalone-field" type="text" id="skudef-name" placeholder="例：MyMod">
+  </div>
+
+  <div class="standalone-section">
+    <label class="standalone-label">Mod Build Options</label>
+    <div class="checkbox-group" id="build-options">
+      <div class="checkbox-item"><input type="checkbox" id="opt-1" checked> 清理Mod暂存文件</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-2"> 清空缓存</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-3"> 建立AptUi</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-4" checked> 建立全局数据</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-5" checked> 建立资产数据</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-6" checked> 合并Assets资产</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-7"> 修复中立资产</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-8"> 复制额外文件</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-9" checked> 建立Big文件</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-10" checked> 建立Skudef文件</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-11"> 建立全屏INI文件</div>
+      <div class="checkbox-item"><input type="checkbox" id="opt-12"> 建立窗口INI文件</div>
+    </div>
+  </div>
+
+  <div class="build-actions">
+    <button type="button" class="app-btn app-btn--primary" onclick="doBuild()">编译</button>
+    <button type="button" class="app-btn app-btn--secondary" onclick="window.close()">取消</button>
+  </div>
+
+  <script>
+    async function loadSettings() {
+      const projectPath = await window.api.getProjectPath();
+      if (!projectPath) return;
+      const config = await window.api.readProjectConfig(projectPath);
+      const build = (config && config.build) ? config.build : {};
+      document.getElementById('build-version').value = build.version || '';
+      document.getElementById('skudef-name').value = build.skudefName || '';
+      const opts = [
+        build.opt1 !== undefined ? build.opt1 : true,
+        build.opt2 || false,
+        build.opt3 || false,
+        build.opt4 !== undefined ? build.opt4 : true,
+        build.opt5 !== undefined ? build.opt5 : true,
+        build.opt6 !== undefined ? build.opt6 : true,
+        build.opt7 || false,
+        build.opt8 || false,
+        build.opt9 !== undefined ? build.opt9 : true,
+        build.opt10 !== undefined ? build.opt10 : true,
+        build.opt11 || false,
+        build.opt12 || false,
+      ];
+      for (let i = 0; i < 12; i++) {
+        document.getElementById(`opt-${i+1}`).checked = opts[i];
+      }
+    }
+
+    async function doBuild() {
+      const version = document.getElementById('build-version').value.trim();
+      if (!version) { alert('请输入版本号'); return; }
+      const skudefName = document.getElementById('skudef-name').value.trim();
+      if (!skudefName) { alert('请输入 Skudef 名称'); return; }
+
+      const opts = [];
+      for (let i = 1; i <= 12; i++) {
+        opts.push(document.getElementById(`opt-${i}`).checked);
+      }
+
+      const buildConfig = {
+        version,
+        skudefName,
+        opt1: opts[0], opt2: opts[1], opt3: opts[2], opt4: opts[3],
+        opt5: opts[4], opt6: opts[5], opt7: opts[6], opt8: opts[7],
+        opt9: opts[8], opt10: opts[9], opt11: opts[10], opt12: opts[11],
+      };
+
+      const projectPath = await window.api.getProjectPath();
+      if (projectPath) {
+        let config = await window.api.readProjectConfig(projectPath) || {};
+        config.build = buildConfig;
+        await window.api.saveProjectConfig(projectPath, config);
+      }
+
+      window.api.startBuild(buildConfig);
+      window.close();
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (typeof AppTheme !== 'undefined') {
+        await AppTheme.initAppThemeFromPreferences();
+        AppTheme.wirePreferencesListener();
+      }
+      loadSettings();
+    });
+  </script>
+</body>
+</html>

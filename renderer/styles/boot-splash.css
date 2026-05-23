@@ -1,0 +1,658 @@
+/* 启动画面 — RA3 指挥 HUD 风格：网格 / 雷达 / 阵营光晕 / 退场扫光 */
+
+.boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(ellipse 90% 70% at 50% 42%, rgba(22, 32, 52, 0.45) 0%, rgba(4, 8, 16, 0.92) 72%);
+  backdrop-filter: blur(8px) saturate(1.15);
+  -webkit-backdrop-filter: blur(8px) saturate(1.15);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.75s ease, visibility 0.75s ease, transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+}
+
+.boot-splash.is-dismissed {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(1.04);
+}
+
+.boot-splash.is-exiting {
+  animation: boot-exit-zoom 0.95s cubic-bezier(0.55, 0, 0.15, 1) forwards;
+}
+
+.boot-splash.is-exiting .boot-splash-flash {
+  animation: boot-flash-burst 0.55s ease-out forwards;
+}
+
+#ide-boot-mount {
+  pointer-events: none;
+}
+
+/* —— 背景场景层 —— */
+.boot-splash-scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.boot-splash-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.35;
+  animation: boot-orb-drift 8s ease-in-out infinite;
+}
+
+.boot-splash-orb-allied {
+  width: 280px;
+  height: 280px;
+  left: 8%;
+  top: 18%;
+  background: rgba(60, 140, 255, 0.55);
+  animation-delay: 0s;
+}
+
+.boot-splash-orb-soviet {
+  width: 240px;
+  height: 240px;
+  right: 10%;
+  top: 22%;
+  background: rgba(220, 50, 45, 0.5);
+  animation-delay: -2.5s;
+}
+
+.boot-splash-orb-empire {
+  width: 220px;
+  height: 220px;
+  left: 42%;
+  bottom: 8%;
+  background: rgba(255, 160, 40, 0.45);
+  animation-delay: -5s;
+}
+
+@keyframes boot-orb-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.28;
+  }
+  50% {
+    transform: translate(12px, -18px) scale(1.08);
+    opacity: 0.42;
+  }
+}
+
+.boot-splash-grid {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: -35%;
+  height: 65%;
+  background-image:
+    linear-gradient(rgba(240, 216, 120, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240, 216, 120, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(420px) rotateX(68deg);
+  transform-origin: center bottom;
+  animation: boot-grid-scroll 3.2s linear infinite;
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 88%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 88%);
+}
+
+@keyframes boot-grid-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 48px;
+  }
+}
+
+.boot-splash-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  opacity: 0.35;
+  animation: boot-scan-flicker 4s steps(2) infinite;
+  pointer-events: none;
+}
+
+@keyframes boot-scan-flicker {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.boot-splash-radar {
+  position: absolute;
+  width: min(72vmin, 520px);
+  height: min(72vmin, 520px);
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  opacity: 0.22;
+}
+
+.boot-splash-radar-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 216, 120, 0.15);
+  box-shadow:
+    inset 0 0 60px rgba(240, 200, 80, 0.04),
+    0 0 40px rgba(0, 0, 0, 0.3);
+}
+
+.boot-splash-radar-ring::before,
+.boot-splash-radar-ring::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 1px dashed rgba(240, 216, 120, 0.12);
+}
+
+.boot-splash-radar-ring::after {
+  inset: 36%;
+}
+
+.boot-splash-radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 300deg,
+    rgba(240, 216, 120, 0.18) 328deg,
+    rgba(240, 216, 120, 0.35) 360deg
+  );
+  animation: boot-radar-spin 3.6s linear infinite;
+}
+
+@keyframes boot-radar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* —— HUD 边框 —— */
+.boot-splash-hud {
+  position: absolute;
+  inset: 28px;
+  pointer-events: none;
+}
+
+.boot-hud-corner {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-color: rgba(240, 216, 120, 0.45);
+  border-style: solid;
+  border-width: 0;
+  animation: boot-hud-pulse 2.2s ease-in-out infinite;
+}
+
+.boot-hud-tl {
+  top: 0;
+  left: 0;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.boot-hud-tr {
+  top: 0;
+  right: 0;
+  border-top-width: 2px;
+  border-right-width: 2px;
+  animation-delay: 0.3s;
+}
+.boot-hud-bl {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+  animation-delay: 0.6s;
+}
+.boot-hud-br {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+  animation-delay: 0.9s;
+}
+
+@keyframes boot-hud-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.boot-hud-ticker {
+  position: absolute;
+  bottom: 0;
+  left: 48px;
+  right: 48px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: rgba(160, 175, 200, 0.5);
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.boot-hud-ticker span {
+  display: inline-block;
+  animation: boot-ticker-slide 12s linear infinite;
+}
+
+@keyframes boot-ticker-slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* —— 主内容 —— */
+.boot-splash-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 36px 32px;
+  max-width: 92vw;
+  text-align: center;
+}
+
+.boot-splash-brand {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(240, 216, 120, 0.7);
+  text-shadow: 0 0 20px rgba(240, 200, 80, 0.25);
+}
+
+.boot-splash-emblem-wrap {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 2px;
+}
+
+.boot-splash-emblem-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 216, 120, 0.25);
+  animation: boot-emblem-ring-spin 6s linear infinite;
+}
+
+.boot-splash-emblem-ring-1 {
+  inset: 0;
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.boot-splash-emblem-ring-2 {
+  inset: 10px;
+  animation-direction: reverse;
+  animation-duration: 4.2s;
+  border-color: rgba(200, 220, 255, 0.2);
+}
+
+@keyframes boot-emblem-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.boot-splash-emblem-core {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(40, 52, 72, 0.95), rgba(8, 12, 20, 0.98));
+  box-shadow:
+    0 0 0 2px rgba(240, 216, 120, 0.35),
+    0 0 36px rgba(240, 200, 80, 0.2),
+    inset 0 0 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: boot-emblem-pulse 2.6s ease-in-out infinite;
+}
+
+.boot-splash-emblem-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+}
+
+.boot-splash.is-complete .boot-splash-emblem-core {
+  animation: boot-emblem-ready 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes boot-emblem-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 2px rgba(240, 216, 120, 0.3),
+      0 0 28px rgba(240, 200, 80, 0.15),
+      inset 0 0 24px rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 2px rgba(240, 216, 120, 0.55),
+      0 0 48px rgba(240, 200, 80, 0.35),
+      inset 0 0 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@keyframes boot-emblem-ready {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1.06);
+    box-shadow:
+      0 0 0 3px rgba(240, 216, 120, 0.75),
+      0 0 56px rgba(240, 216, 120, 0.45),
+      inset 0 0 16px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.boot-splash-factions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: -4px;
+}
+
+.boot-faction {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  opacity: 0.55;
+  animation: boot-faction-blink 1.8s ease-in-out infinite;
+}
+
+.boot-faction-allied {
+  background: linear-gradient(135deg, #4a9eff, #1a5fcc);
+  box-shadow: 0 0 12px rgba(74, 158, 255, 0.5);
+  animation-delay: 0s;
+}
+.boot-faction-soviet {
+  background: linear-gradient(135deg, #e04040, #8a1818);
+  box-shadow: 0 0 12px rgba(220, 64, 64, 0.5);
+  animation-delay: 0.35s;
+}
+.boot-faction-empire {
+  background: linear-gradient(135deg, #ffb040, #c06010);
+  box-shadow: 0 0 12px rgba(255, 176, 64, 0.5);
+  animation-delay: 0.7s;
+}
+
+@keyframes boot-faction-blink {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: rotate(45deg) scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1.15);
+  }
+}
+
+.boot-splash-label {
+  font-size: 24px;
+  font-weight: 800;
+  color: #f0e8d0;
+  letter-spacing: 0.32em;
+  margin-right: -0.32em;
+  line-height: 1.35;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
+}
+
+.boot-splash-label .boot-char {
+  display: inline-block;
+  opacity: 0.55;
+  animation: boot-char-wave 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.1s);
+}
+
+.boot-splash.is-complete .boot-splash-label .boot-char {
+  animation: boot-char-ready 0.55s ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 0.05s);
+}
+
+@keyframes boot-char-wave {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateY(3px);
+    color: rgba(200, 210, 230, 0.8);
+    text-shadow: none;
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-5px);
+    color: #f0d878;
+    text-shadow: 0 0 18px rgba(240, 216, 120, 0.6);
+  }
+}
+
+@keyframes boot-char-ready {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    color: #fff4c8;
+    text-shadow: 0 0 22px rgba(240, 216, 120, 0.75);
+  }
+}
+
+.boot-splash-tagline {
+  font-size: 12px;
+  color: rgba(170, 185, 210, 0.65);
+  letter-spacing: 0.12em;
+  min-height: 1.2em;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.boot-splash-tagline.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.boot-splash.is-complete .boot-splash-tagline {
+  color: rgba(240, 216, 120, 0.9);
+  letter-spacing: 0.18em;
+}
+
+.boot-splash-status {
+  font-size: 12px;
+  color: rgba(180, 195, 220, 0.88);
+  min-height: 1.4em;
+  letter-spacing: 0.06em;
+}
+
+.boot-splash-progress-wrap {
+  width: min(420px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.boot-splash-progress-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(240, 216, 120, 0.12);
+}
+
+.boot-splash-progress-segments {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent calc(10% - 1px),
+    rgba(255, 255, 255, 0.06) calc(10% - 1px),
+    rgba(255, 255, 255, 0.06) 10%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.boot-splash-progress-fill {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #6a4018 0%, #f0d878 35%, #fff6c8 50%, #c9a84a 65%, #f0d878 100%);
+  background-size: 220% 100%;
+  animation: boot-progress-shimmer 1.6s linear infinite;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.boot-splash-progress-glow {
+  position: absolute;
+  left: 0;
+  top: -2px;
+  height: calc(100% + 4px);
+  width: 0%;
+  z-index: 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, transparent, rgba(240, 216, 120, 0.35));
+  filter: blur(6px);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.boot-splash.is-near-complete .boot-splash-progress-fill,
+.boot-splash.is-complete .boot-splash-progress-fill {
+  animation-duration: 0.9s;
+  box-shadow: 0 0 16px rgba(240, 216, 120, 0.55);
+}
+
+@keyframes boot-progress-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.boot-splash-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.boot-splash-progress-hint {
+  color: rgba(240, 216, 120, 0.55);
+  font-weight: 600;
+}
+
+.boot-splash-progress-pct {
+  color: rgba(200, 210, 230, 0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+.boot-splash-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 248, 220, 0.55) 0%, transparent 55%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes boot-flash-burst {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes boot-exit-zoom {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+    filter: blur(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash-grid,
+  .boot-splash-radar-sweep,
+  .boot-splash-emblem-ring,
+  .boot-splash-orb,
+  .boot-splash-scanlines,
+  .boot-hud-ticker span,
+  .boot-splash-label .boot-char,
+  .boot-faction {
+    animation: none !important;
+  }
+  .boot-splash.is-exiting {
+    animation-duration: 0.35s;
+  }
+}
