@@ -1,0 +1,177 @@
+// main/agent-ipc.js
+const { ipcMain } = require('electron');
+const agentTools = require('./agent-tools');
+const { plan, summarizeExecution } = require('./agent-planner');
+const { executePlan } = require('./agent-executor');
+const { addKnowledge, getAllEntries, deleteEntry, clearAll, importFrom, exportTo, getStats } = require('./knowledge-base');
+
+const pendingExecutions = {};
+
+function generateExecutionId() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+}
+
+function registerAgentIpc() {
+  agentTools.setRefreshFileCallback((relativePath) => {
+    const { BrowserWindow } = require('electron');
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('agent:refresh-file', relativePath);
+    });
+  });
+
+  agentTools.setOpenFileCallback((relativePath, line, column) => {
+    const { BrowserWindow } = require('electron');
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('agent:open-file', { file: relativePath, line, column });
+    });
+  });
+
+  ipcMain.on('agent:chat', (event, message) => {
+    const senderWin = event.sender.getOwnerBrowserWindow();
+    if (!senderWin) return;
+
+    if (message.startsWith('/tool ')) {
+      const parts = message.substring(6).split(/\s+/);
+      const toolName = parts[0];
+      const argsArray = parts.slice(1);
+      try {
+        // 手动命令仍按数组传，内部兼容
+        const result = agentTools[toolName](argsArray);
+        senderWin.webContents.send('agent:response', JSON.stringify(result, null, 2));
+      } catch (err) {
+        senderWin.webContents.send('agent:response', JSON.stringify({ success: false, error: err.message }));
+      }
+      return;
+    }
+
+    const executionId = generateExecutionId();
+    senderWin.webContents.send('agent:response', '🤔 正在分析需求...');
+
+    plan(message)
+      .then(async (planResult) => {
+        if (planResult && planResult.response) {
+          senderWin.webContents.send('agent:response', planResult.response);
+          return;
+        }
+        if (!Array.isArray(planResult)) {
+          // 尝试自动修复
+          senderWin.webContents.send('agent:response', '⚠️ AI 返回格式异常，正在尝试修复...');
+          const retryPlan = await plan("请严格只输出一个JSON数组，不要任何解释文字：" + message);
+          if (Array.isArray(retryPlan)) {
+            planResult = retryPlan;
+          } else {
+            senderWin.webContents.send('agent:response', '❌ AI 无法生成合法计划，请重新描述您的需求');
+            return;
+          }
+        }
+
+        pendingExecutions[executionId] = {
+          userMessage: message,
+          plan: planResult,
+          log: null,
+          success: false,
+        };
+
+        senderWin.webContents.send('agent:response', `📋 规划完成，共 ${planResult.length} 步，开始执行...`);
+        const execRes = await executePlan(planResult, (stepIndex, step, result) => {
+          if (stepIndex === -1 && step.tool === '_retry') {
+            senderWin.webContents.send('agent:response', `🔄 第 ${step.args.retryCount} 次重试，重新规划...`);
+            return;
+          }
+          const statusIcon = result.success ? '✅' : '❌';
+          senderWin.webContents.send('agent:response', `${statusIcon} 步骤${stepIndex+1}: ${step.tool}`);
+        }, message);
+
+        if (pendingExecutions[executionId]) {
+          pendingExecutions[executionId].log = execRes.log;
+          pendingExecutions[executionId].success = execRes.success;
+        }
+
+        const summary = await summarizeExecution(execRes.log, message);
+        const finalMsg = summary + `\n[执行ID: ${executionId}]`;
+        senderWin.webContents.send('agent:response', finalMsg);
+      })
+      .catch(err => {
+        senderWin.webContents.send('agent:response', `❌ 发生异常: ${err.message}`);
+      });
+  });
+
+  ipcMain.on('agent:confirm-correct', async (event, executionId) => {
+    const senderWin = event.sender.getOwnerBrowserWindow();
+    const context = pendingExecutions[executionId];
+    if (!context) {
+      senderWin?.webContents.send('agent:response', '❌ 无效的执行ID');
+      return;
+    }
+
+    try {
+      await addKnowledge({
+        intent: context.userMessage,
+        plan: context.plan,
+        summary: context.log
+          ? context.log.map(l => `${l.tool}: ${l.result.success ? '成功' : '失败'}`).join('; ')
+          : '执行完成',
+        source_files: '',
+        tags: [],
+      });
+      delete pendingExecutions[executionId];
+      senderWin?.webContents.send('agent:response', '✅ 已记录正确操作，知识库已更新');
+    } catch (err) {
+      senderWin?.webContents.send('agent:response', `❌ 知识库写入失败: ${err.message}`);
+    }
+  });
+
+  ipcMain.handle('agent:tool-call', async (event, toolName, args) => {
+    try {
+      if (typeof agentTools[toolName] !== 'function') {
+        return { success: false, error: `未知工具: ${toolName}` };
+      }
+      const result = await agentTools[toolName](args || {});
+      return result;
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('knowledge:get-all', async () => {
+    return await getAllEntries();
+  });
+
+  ipcMain.handle('knowledge:delete', async (event, id) => {
+    await deleteEntry(id);
+    return { success: true };
+  });
+
+  ipcMain.handle('knowledge:clear', async () => {
+    await clearAll();
+    return { success: true };
+  });
+
+  ipcMain.handle('knowledge:import', async (event, sourcePath) => {
+    try {
+      await importFrom(sourcePath);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('knowledge:export', async (event, destPath) => {
+    try {
+      await exportTo(destPath);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  
+  async function callAI(messages) {
+  // 👉 你已有 deepseek / openai 调用
+}
+
+  ipcMain.handle('knowledge:stats', async () => {
+    return await getStats();
+  });
+}
+
+module.exports = { registerAgentIpc };

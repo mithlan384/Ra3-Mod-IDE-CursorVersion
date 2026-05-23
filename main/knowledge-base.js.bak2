@@ -1,0 +1,261 @@
+// main/knowledge-base.js —— 知识库模块（语义检索版 - 稳定版）
+
+const fs = require('fs');
+const path = require('path');
+const { app } = require('electron');
+const { pipeline, env } = require('@xenova/transformers');
+
+// ----- 全局配置 -----
+const EMBEDDING_DIM = 384;                     // MiniLM-L6-v2 输出维度
+const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2';
+const TABLE_NAME = 'vectors';
+
+// 设置离线模型目录（绝对路径，指向项目根目录下的 models 文件夹）
+env.localModelPath = path.join(__dirname, '..', 'models');
+env.allowRemoteModels = false;      // 强制使用本地模型
+env.allowLocalModels = true;
+
+// ----- 状态变量 -----
+let db = null;
+let dbPath = '';
+let dataFile = '';
+let embedder = null;    // Transformers pipeline 实例（懒加载）
+
+// ========== 1. 获取存储路径 ==========
+function getPaths(projectRoot) {
+  const base = path.join(projectRoot || app.getPath('userData'), '.knowledge');
+  return {
+    base,
+    dataFile: path.join(base, 'data.json'),
+  };
+}
+
+// ========== 2. 初始化数据库（修复：自动确保表存在） ==========
+async function initDatabase(projectRoot) {
+  const { getCurrentFolder } = require('./project-state');
+  const root = projectRoot || getCurrentFolder();
+  const paths = getPaths(root);
+  dbPath = paths.base;
+  dataFile = paths.dataFile;
+
+  // 确保目录存在
+  if (!fs.existsSync(dbPath)) {
+    fs.mkdirSync(dbPath, { recursive: true });
+  }
+  // 确保 JSON 主文件存在
+  if (!fs.existsSync(dataFile)) {
+    await fs.promises.writeFile(dataFile, JSON.stringify([]));
+  }
+
+  // 连接 LanceDB
+  const lancedb = require('@lancedb/lancedb');
+  db = await lancedb.connect(dbPath);
+
+  // 确保表存在（避免后续操作时表不存在报错）
+  await ensureTable();
+}
+
+// ========== 3. 确保表结构 ==========
+async function ensureTable() {
+  if (!db) throw new Error('数据库未初始化');
+  const tables = await db.tableNames();
+  if (!tables.includes(TABLE_NAME)) {
+    // 创建表，插入一条占位记录以建立 schema
+    await db.createTable(TABLE_NAME, [
+      { id: '_placeholder', vector: new Float32Array(EMBEDDING_DIM) },
+    ]);
+  }
+}
+
+// ========== 4. 生成 Embedding（真实模型） ==========
+async function getEmbedding(text) {
+  if (!text || text.trim() === '') {
+    return new Float32Array(EMBEDDING_DIM);
+  }
+
+  try {
+    if (!embedder) {
+      embedder = await pipeline('feature-extraction', MODEL_NAME);
+    }
+    const result = await embedder(text, {
+      pooling: 'mean',
+      normalize: true,
+    });
+    return Float32Array.from(result.data);
+  } catch (err) {
+    console.error('⚠️ Embedding 生成失败，使用零向量降级:', err.message);
+    return new Float32Array(EMBEDDING_DIM);
+  }
+}
+
+// ========== 5. JSON 读写 ==========
+function readJSON() {
+  try {
+    const raw = fs.readFileSync(dataFile, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function writeJSON(data) {
+  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+// ========== 6. 添加知识条目 ==========
+async function addKnowledge(record) {
+  if (!db) await initDatabase();
+  await ensureTable();
+
+  // 生成更具描述性的文本用于向量化（提升语义匹配）
+  const textForEmbedding = `意图：${record.intent || ''}。操作摘要：${record.summary || ''}`;
+  const embedding = await getEmbedding(textForEmbedding);
+
+  // 生成唯一 ID
+  const id = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  record.id = id;
+  record.timestamp = new Date().toISOString();
+
+  // 写入 JSON 主存储
+  const list = readJSON();
+  list.push(record);
+  writeJSON(list);
+
+  // 写入 LanceDB 向量表
+  const table = await db.openTable(TABLE_NAME);
+  await table.add([{ id, vector: embedding }]);
+
+  // 清理占位及脏数据（删除 _placeholder 和其他非 kb_ 开头的记录）
+  try {
+    // 直接删除已知占位 ID
+    await table.delete('_placeholder');
+  } catch (e) {
+    // 占位记录可能已不存在，忽略
+  }
+
+  try {
+    // 扫描并删除任何残留的脏数据（安全网）
+    const all = await table.search().toArray();
+    if (all && all.length > 0) {
+      const toDelete = all
+        .filter(r => r.id && !r.id.startsWith('kb_'))
+        .map(r => r.id);
+      for (const delId of toDelete) {
+        await table.delete(delId);
+      }
+    }
+  } catch (e) {
+    // 扫描清理失败时忽略，不影响主流程
+  }
+
+  return record;
+}
+
+// ========== 7. 语义搜索（使用 toArray 获取结果） ==========
+async function searchSimilar(query, topN = 3) {
+  if (!db) await initDatabase();
+
+  const list = readJSON();
+  if (list.length === 0) return [];
+
+  try {
+    const queryVector = await getEmbedding(query);
+    const table = await db.openTable(TABLE_NAME);
+    
+    // 使用 toArray() 获取结果数组（已验证兼容当前环境）
+    const results = await table.search(queryVector).limit(topN).toArray();
+
+    // 提取 id（兼容 id / _id / _rowid 字段名）
+    const idSet = new Set(
+      results.map(r => r.id || r._id || r._rowid).filter(Boolean)
+    );
+
+    // 从 JSON 中筛选出匹配的条目（保持结果顺序与向量相似度一致）
+    const matched = [];
+    for (const row of results) {
+      const rid = row.id || row._id || row._rowid;
+      const item = list.find(e => e.id === rid);
+      if (item) matched.push(item);
+    }
+    return matched;
+  } catch (err) {
+    console.error('🔍 向量搜索失败，回退为返回最新条目:', err.message);
+    return list.slice(-topN).reverse();
+  }
+}
+
+// ========== 8. 获取所有条目 ==========
+async function getAllEntries() {
+  if (!db) await initDatabase();
+  return readJSON();
+}
+
+// ========== 9. 删除条目 ==========
+async function deleteEntry(id) {
+  if (!db) await initDatabase();
+  let list = readJSON();
+  const newList = list.filter(item => item.id !== id);
+  if (newList.length === list.length) return;
+  writeJSON(newList);
+
+  try {
+    const table = await db.openTable(TABLE_NAME);
+    await table.delete(id);
+  } catch (e) {
+    console.error('删除向量失败:', e.message);
+  }
+}
+
+// ========== 10. 清空知识库 ==========
+async function clearAll() {
+  if (!db) await initDatabase();
+  writeJSON([]);
+
+  try {
+    await db.dropTable(TABLE_NAME);
+  } catch (e) {
+    console.error('清空向量表失败:', e.message);
+  }
+  // 重新创建空表
+  await ensureTable();
+}
+
+// ========== 11. 导入导出 ==========
+async function importFrom(filePath) {
+  const data = JSON.parse(await fs.promises.readFile(filePath, 'utf-8'));
+  for (const record of data) {
+    await addKnowledge(record);
+  }
+}
+
+async function exportTo(filePath) {
+  const list = readJSON();
+  await fs.promises.writeFile(filePath, JSON.stringify(list, null, 2), 'utf-8');
+}
+
+// ========== 12. 统计信息（修复：表不存在时不报错） ==========
+async function getStats() {
+  if (!db) await initDatabase();
+  const list = readJSON();
+  try {
+    const table = await db.openTable(TABLE_NAME);
+    const rowCount = await table.countRows();
+    return { totalEntries: list.length, totalVectors: rowCount };
+  } catch (e) {
+    // 表不存在或打开失败时，返回 0 向量数
+    return { totalEntries: list.length, totalVectors: 0 };
+  }
+}
+
+// ========== 导出 ==========
+module.exports = {
+  initDatabase,
+  addKnowledge,
+  searchSimilar,
+  getAllEntries,
+  deleteEntry,
+  clearAll,
+  importFrom,
+  exportTo,
+  getStats,
+};

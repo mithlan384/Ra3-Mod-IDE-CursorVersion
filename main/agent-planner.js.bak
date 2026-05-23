@@ -1,0 +1,330 @@
+// main/agent-planner.js (阶段5增强版 - 集成联网搜索)
+
+const { searchSimilar } = require('./knowledge-base');
+const { getCurrentFolder } = require('./project-state');
+
+// ========== 1. 工具定义 ==========
+function getToolDefinitions() {
+  return [
+    {
+      name: 'setUnitProperty',
+      description: '设置单位的某个属性值',
+      parameters: {
+        unitId: '单位 ID',
+        propertyPath: '属性路径，如 Health.MaxHealth 或 Behaviors.WeaponSetUpdate.WeaponSlotTurret.Weapon.Template',
+        newValue: '新的值',
+      },
+      examples: [
+        {
+          intent: '把天启坦克的血量改为 200',
+          parameters: { unitId: 'ApocalypseTank', propertyPath: 'Health.MaxHealth', newValue: '200' },
+        },
+      ],
+    },
+    {
+      name: 'addWeaponToUnit',
+      description: '给单位添加一个武器',
+      parameters: {
+        unitId: '单位 ID',
+        weaponTemplate: '武器模板名称',
+        slot: '武器槽位，默认 PRIMARY_WEAPON',
+      },
+      examples: [
+        {
+          intent: '给天启坦克添加超级武器',
+          parameters: { unitId: 'ApocalypseTank', weaponTemplate: 'SuperWeapon', slot: 'PRIMARY_WEAPON' },
+        },
+      ],
+    },
+    {
+      name: 'getUnitFullXml',
+      description: '获取单位的完整 XML 内容',
+      parameters: { unitId: '单位 ID' },
+    },
+    {
+      name: 'getUnitInheritance',
+      description: '获取单位的继承链',
+      parameters: { unitId: '单位 ID' },
+    },
+    {
+      name: 'getWeaponsOfUnit',
+      description: '获取单位拥有的所有武器',
+      parameters: { unitId: '单位 ID' },
+    },
+    {
+      name: 'findUnitsByName',
+      description: '按名称搜索单位',
+      parameters: { keyword: '名称关键字' },
+    },
+    {
+      name: 'listAllUnits',
+      description: '列出项目中所有单位 ID',
+      parameters: {},
+    },
+    {
+      name: 'readXml',
+      description: '读取指定 XML 文件中的某个路径的值',
+      parameters: { file: '文件相对路径', path: 'XML 路径，如 Health.MaxHealth' },
+    },
+    {
+      name: 'writeXml',
+      description: '直接写入 XML 文件中的某个路径的值',
+      parameters: { file: '文件相对路径', path: 'XML 路径', value: '新值' },
+    },
+    {
+      name: 'getXmlStructure',
+      description: '获取 XML 文件的结构树（最多 2 层）',
+      parameters: { file: '文件相对路径', depth: '深度，默认 2' },
+    },
+    {
+      name: 'searchFiles',
+      description: '在项目中搜索文件和内容',
+      parameters: { pattern: '搜索关键词' },
+    },
+    {
+      name: 'findReferences',
+      description: '在项目中搜索关键词的全局引用',
+      parameters: { keyword: '关键词' },
+    },
+    {
+      name: 'listProjectStructure',
+      description: '查看项目目录结构',
+      parameters: { subDir: '子目录（可选）' },
+    },
+    {
+      name: 'backupFile',
+      description: '手动备份文件',
+      parameters: { file: '文件相对路径' },
+    },
+    {
+      name: 'restoreFile',
+      description: '从备份恢复文件',
+      parameters: { file: '文件相对路径' },
+    },
+    {
+      name: 'openFileInEditor',
+      description: '在 IDE 编辑器中打开文件',
+      parameters: { filePath: '文件相对路径', line: '行号（可选）', column: '列号（可选）' },
+    },
+    {
+      name: 'webSearch',
+      description: '在互联网上搜索信息，获取最新的 RA3 Mod 开发资料、文档、解决方案等。当内部知识无法解决问题时使用此工具。搜索结果会被提炼成可操作步骤，而非直接展示原始网页。',
+      parameters: {
+        query: '搜索关键词（英文或中文）',
+        maxResults: '返回结果数量，默认3，最大5',
+      },
+      examples: [
+        {
+          intent: '查找如何修改单位移动速度',
+          parameters: { query: 'Red Alert 3 mod change unit speed XML' },
+        },
+      ],
+    },
+  ];
+}
+
+// ========== 2. System Prompt 构造 ==========
+function buildSystemPrompt(toolDefs, knowledgeContext, allowSearch) {
+  const toolList = JSON.stringify(toolDefs, null, 2);
+  let prompt = `你是一个 RA3 MOD 开发助手，可以操作项目中的 XML 文件。你只能使用以下工具：
+
+${toolList}
+
+【规则】
+- 只返回 JSON 数组，每个元素是一个工具调用：{"tool": "工具名", "args": {参数}}
+- 不要输出任何解释、说明、markdown 标记，只返回 JSON 数组。
+- 如果任务不需要修改文件，请返回空数组 []。
+- 如果任务无法完成，返回 {"response": "说明原因"}。
+- 参数中 file 均使用相对于项目根目录的路径。
+
+【联网搜索策略】
+- 如果你需要的信息不在内置知识或知识库中，并且用户已允许联网搜索，你可以在计划中包含 webSearch 工具。
+- 如果用户未开启联网搜索但你确实需要，可以返回 {"response": "我需要联网搜索相关资料，请开启搜索开关或输入'强制搜索'。"}
+- 使用 webSearch 时，只搜索关键信息，不要用自然语言问句。
+- 搜索结果将由系统自动提炼为可操作方案，你将基于该方案生成后续工具调用。
+
+${knowledgeContext}
+
+当前项目根目录：${getCurrentFolder()}
+允许联网搜索：${allowSearch ? '是' : '否'}`;
+  return prompt;
+}
+
+// ========== 3. 调用 LLM ==========
+async function callLLM(messages) {
+  const fs = require('fs');
+  const path = require('path');
+  const { app } = require('electron');
+  const configPath = path.join(app.getPath('userData'), 'ra3-ai-config.json');
+  let config = { apiKey: 'sk-placeholder', apiUrl: 'https://api.deepseek.com/v1/chat/completions', model: 'deepseek-chat' };
+  if (fs.existsSync(configPath)) {
+    try {
+      const raw = fs.readFileSync(configPath, 'utf-8');
+      const userCfg = JSON.parse(raw);
+      if (userCfg.apiKey) config.apiKey = userCfg.apiKey;
+      if (userCfg.apiUrl) config.apiUrl = userCfg.apiUrl;
+      if (userCfg.model) config.model = userCfg.model;
+    } catch (e) {}
+  }
+
+  const https = require('https');
+  const url = new URL(config.apiUrl);
+  const body = JSON.stringify({
+    model: config.model,
+    messages,
+    temperature: 0.1,
+    max_tokens: 1000,
+  });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            resolve(json.choices[0].message.content);
+          } catch (e) {
+            reject(new Error('解析 LLM 响应失败'));
+          }
+        });
+      }
+    );
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+// ========== 4. 清洗 LLM 返回 ==========
+function parsePlan(raw) {
+  let cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object' && parsed.response) {
+      return { response: parsed.response };
+    }
+    return [];
+  } catch {
+    cleaned = cleaned.replace(/，/g, ',').replace(/：/g, ':').replace(/“/g, '"').replace(/”/g, '"');
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      return [];
+    }
+  }
+}
+
+// ========== 5. 提炼搜索结果 ==========
+async function digestSearchResults(userMessage, searchResults) {
+  let context = '以下是从互联网搜索到的资料：\n';
+  searchResults.forEach((r, i) => {
+    context += `\n[${i+1}] 标题：${r.title}\n摘要：${r.snippet}\n来源：${r.url}\n`;
+  });
+  context += `\n请根据以上资料，针对用户需求“${userMessage}”，生成一份简洁的修改方案。方案中要指明需要操作的文件、标签、属性以及预期值。如果搜索结果不足以形成方案，请说明。`;
+
+  const messages = [
+    { role: 'system', content: '你是 RA3 MOD 专家，能从网络资料中提取可执行的操作步骤。' },
+    { role: 'user', content: context },
+  ];
+
+  try {
+    const raw = await callLLM(messages);
+    return raw.trim();
+  } catch (err) {
+    console.error('提炼搜索结果失败:', err.message);
+    return '基于搜索结果无法自动生成方案。';
+  }
+}
+
+// ========== 6. 规划主入口（集成搜索决策） ==========
+async function plan(userMessage, options = {}) {
+  const { forceSearch = false, allowSearch = true } = options;
+  const toolDefs = getToolDefinitions();
+
+  let knowledgeContext = '';
+  try {
+    const similarCases = await searchSimilar(userMessage, 3);
+    console.log('[知识库命中] 数量:', similarCases.length);
+    if (similarCases.length > 0) {
+      console.log('[知识库命中] 第一条意图:', similarCases[0].intent);
+      console.log('[知识库命中] 第一条计划:', JSON.stringify(similarCases[0].plan));
+      knowledgeContext = `\n〖参考成功案例，请尽量模仿其操作思路〗\n` +
+        similarCases
+          .map((c, i) => `案例${i+1}：意图"${c.intent}"，成功计划：${JSON.stringify(c.plan)}，摘要：${c.summary}`)
+          .join('\n');
+    }
+  } catch (err) {
+    console.error('[知识库] 检索异常:', err.message);
+  }
+
+  const systemPrompt = buildSystemPrompt(toolDefs, knowledgeContext, allowSearch);
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userMessage },
+  ];
+
+  if (forceSearch) {
+    return [{ tool: 'webSearch', args: { query: userMessage, maxResults: 3 } }];
+  }
+
+  try {
+    const raw = await callLLM(messages);
+    return parsePlan(raw);
+  } catch (err) {
+    console.error('Planner 调用失败:', err.message);
+    return [];
+  }
+}
+
+// ========== 7. 执行后总结 ==========
+async function summarizeExecution(log, userMessage) {
+  const summaryPrompt = `以下是一个 RA3 MOD 操作的执行日志，请用一句简洁友好的中文向用户总结操作结果和注意事项（不要技术细节，不要列表）。\n用户需求：${userMessage}\n执行日志：${JSON.stringify(log)}`;
+  try {
+    const raw = await callLLM([{ role: 'system', content: '你是一个友好的助手，用口语化中文总结操作结果。' }, { role: 'user', content: summaryPrompt }]);
+    return raw.trim();
+  } catch {
+    return '操作已完成。';
+  }
+}
+
+// ========== 8. 处理搜索与提炼的特殊流程 ==========
+async function handleWebSearchAndReplan(currentPlan, userMessage, tools) {
+  const searchStep = currentPlan.find(s => s.tool === 'webSearch');
+  if (!searchStep) return currentPlan;
+
+  const searchResult = await tools.webSearch(searchStep.args);
+  if (!searchResult.success) {
+    console.error('搜索失败:', searchResult.error);
+    return currentPlan.filter(s => s.tool !== 'webSearch');
+  }
+
+  const digested = await digestSearchResults(userMessage, searchResult.data.results);
+  console.log('[搜索提炼] 方案:', digested);
+
+  const newPlan = await plan(
+    `用户原始需求：${userMessage}\n\n根据搜索到的资料，得到以下修改方案：\n${digested}\n\n请根据此方案生成具体的工具调用步骤，直接修改文件。`,
+    { forceSearch: false, allowSearch: false }
+  );
+
+  if (Array.isArray(newPlan) && newPlan.length > 0) {
+    return newPlan;
+  } else {
+    return currentPlan.filter(s => s.tool !== 'webSearch');
+  }
+}
+
+// ========== 导出 ==========
+module.exports = { plan, getToolDefinitions, summarizeExecution, digestSearchResults, handleWebSearchAndReplan };

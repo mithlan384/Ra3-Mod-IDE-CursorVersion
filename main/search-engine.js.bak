@@ -1,0 +1,101 @@
+// main/search-engine.js
+const https = require('https');
+
+// ========== 配置类型定义 ==========
+/**
+ * @typedef {Object} SearchConfig
+ * @property {string} provider - 'google' | 'searxng'
+ * @property {string} apiKey - Google API key (当 provider 为 google 时必填)
+ * @property {string} cx - Google 自定义搜索引擎 ID (当 provider 为 google 时必填)
+ * @property {string} baseUrl - SearXNG 实例地址 (当 provider 为 searxng 时必填，如 'https://your-searxng.com')
+ */
+
+/**
+ * 执行搜索
+ * @param {string} query 搜索关键词
+ * @param {Object} options
+ * @param {number} options.maxResults 返回结果数 (1-10)
+ * @param {SearchConfig} options.config 搜索配置
+ * @returns {Promise<Array<{title:string, snippet:string, url:string}>>}
+ */
+async function search(query, { maxResults = 3, config } = {}) {
+  if (!config || !config.provider) {
+    throw new Error('未提供搜索配置');
+  }
+
+  const provider = config.provider.toLowerCase();
+  if (provider === 'google') {
+    return searchGoogle(query, maxResults, config);
+  } else if (provider === 'searxng') {
+    return searchSearXNG(query, maxResults, config);
+  } else {
+    throw new Error(`不支持的搜索引擎提供商: ${config.provider}`);
+  }
+}
+
+// ========== Google Custom Search ==========
+function searchGoogle(query, maxResults, config) {
+  const key = config.apiKey;
+  const cx = config.cx;
+  if (!key || !cx) throw new Error('Google 搜索配置不完整 (缺少 apiKey 或 cx)');
+
+  const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&key=${key}&cx=${cx}&num=${Math.min(maxResults, 10)}`;
+
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.error) {
+            return reject(new Error(json.error.message));
+          }
+          const items = json.items || [];
+          const results = items.map(item => ({
+            title: item.title,
+            snippet: item.snippet,
+            url: item.link,
+          }));
+          resolve(results);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+// ========== SearXNG ==========
+function searchSearXNG(query, maxResults, config) {
+  const baseUrl = config.baseUrl;
+  if (!baseUrl) throw new Error('SearXNG 配置不完整 (缺少 baseUrl)');
+
+  const url = `${baseUrl}/search?format=json&q=${encodeURIComponent(query)}&categories=general&limit=${maxResults}`;
+
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.results) {
+            const results = json.results.slice(0, maxResults).map(r => ({
+              title: r.title,
+              snippet: r.content || r.snippet || '',
+              url: r.url,
+            }));
+            resolve(results);
+          } else {
+            resolve([]);
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+module.exports = { search };
