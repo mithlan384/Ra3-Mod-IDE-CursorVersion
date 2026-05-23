@@ -1,0 +1,104 @@
+{
+  "name": "ra3-ide",
+  "version": "0.4.0",
+  "description": "RA3 MOD 集成开发环境",
+  "main": "main.js",
+  "scripts": {
+    "start": "chcp 65001 >nul 2>&1 && electron .",
+    "pack:prepare": "node scripts/prepare-pack-seed.js",
+    "pack": "npm run pack:prepare && electron-builder --win --x64",
+    "dist": "npm run dist:pack",
+    "dist:pack": "npm run pack:prepare && electron-builder --win dir --x64 && node scripts/finalize-pack.js",
+    "dist:installer": "npm run pack:prepare && electron-builder --win nsis --x64",
+    "test": "node scripts/smoke-test.js",
+    "test:search": "node test-hybrid-search.js",
+    "test:knowledge": "node test-knowledge-flow.js"
+  },
+  "keywords": [],
+  "author": "RA3 Mod Team",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^42.1.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.8.0",
+    "monaco-editor": "^0.55.1"
+  },
+  "build": {
+    "appId": "com.ra3mod.ra3-ide",
+    "productName": "RA3 MOD IDE",
+    "extraMetadata": {
+      "version": "0.4.0",
+      "description": "RA3 MOD 集成开发环境 v0.4"
+    },
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "D:/Ra3ModEditTool/Others",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "main/**/*",
+      "preload/**/*",
+      "renderer/**/*",
+      "knowledge-docs/**/*",
+      "package.json",
+      "!**/*.bak*",
+      "!test-*.js",
+      "!scripts/**",
+      "!clean-vectors.js",
+      "!models/**",
+      "!**/.git/**",
+      "!**/.vscode/**"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/monaco-editor/**"
+    ],
+    "extraResources": [
+      {
+        "from": "Art",
+        "to": "Art",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "build/测试员使用说明.txt",
+        "to": "测试员使用说明.txt"
+      },
+      {
+        "from": "build/seed-user-data",
+        "to": "seed-user-data",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "RA3-MOD-IDE-0.4-便携.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RA3 MOD IDE",
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "language": "2052",
+      "artifactName": "RA3-MOD-IDE-0.4-Setup.${ext}"
+    }
+  }
+}
