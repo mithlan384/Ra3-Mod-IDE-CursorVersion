@@ -1,0 +1,8 @@
+{
+  "autoSaveInterval": 0,
+  "theme": "vs-dark",
+  "spellcheckEnabled": false,
+  "persistSettings": true,
+  "allowWebSearch": true,
+  "aiPersonality": "default"
+}
